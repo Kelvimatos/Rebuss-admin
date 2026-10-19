@@ -108,6 +108,22 @@ if (fs.existsSync(geradorPath)) {
 // 5. REST API routes
 app.use("/api", apiRouter);
 
+// Fallback para invocações serverless (Vercel) onde o prefixo /api pode ser removido pelo gateway
+app.use((req, res, next) => {
+  if (
+    req.path.startsWith("/auth") ||
+    req.path.startsWith("/users") ||
+    req.path.startsWith("/fixed-teams") ||
+    req.path.startsWith("/scale-generator") ||
+    req.path.startsWith("/tools") ||
+    req.path.startsWith("/dashboard") ||
+    req.path.startsWith("/health")
+  ) {
+    return apiRouter(req, res, next);
+  }
+  next();
+});
+
 // 6. Production SPA Serving (permite rodar frontend compilado e backend em um único serviço unificado)
 if (isProduction) {
   const clientDistPath = path.resolve(process.cwd(), "client", "dist");
@@ -131,40 +147,34 @@ if (isProduction) {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[REBUSS OPS] Servidor backend ativo na porta ${PORT}`);
-  console.log(`[REBUSS OPS] Modo: ${process.env.NODE_ENV || "development"}`);
-  console.log(`[REBUSS OPS] API base: http://127.0.0.1:${PORT}/api`);
-});
-
-// Prevent unhandled rejections from crashing the backend process unexpectedly
-process.on("unhandledRejection", (reason) => {
-  console.error("[REBUSS OPS] Unhandled Rejection capturada:", reason);
-});
-
-process.on("uncaughtException", (err) => {
-  console.error("[REBUSS OPS] Uncaught Exception capturada:", err);
-});
-
-// Graceful shutdown that immediately closes keep-alive connections so port 3001 is released without delay
-let isShuttingDown = false;
-const shutdown = async () => {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
-  console.log("\n[REBUSS OPS] Encerrando servidor com segurança...");
-  server.closeAllConnections?.();
-  server.close(async () => {
-    try {
-      await prisma.$disconnect();
-    } catch {
-      // Ignore disconnect errors during shutdown
-    }
-    console.log("[REBUSS OPS] Conexão com o banco finalizada.");
-    process.exit(0);
+// Only launch standalone HTTP listener when running as a dedicated process (not serverless on Vercel)
+if (!process.env.VERCEL && !process.env.NOW_REGION) {
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[REBUSS OPS] Servidor backend ativo na porta ${PORT}`);
+    console.log(`[REBUSS OPS] Modo: ${process.env.NODE_ENV || "development"}`);
+    console.log(`[REBUSS OPS] API base: http://127.0.0.1:${PORT}/api`);
   });
-};
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+  // Graceful shutdown that immediately closes keep-alive connections so port 3001 is released without delay
+  let isShuttingDown = false;
+  const shutdown = async () => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log("\n[REBUSS OPS] Encerrando servidor com segurança...");
+    server.closeAllConnections?.();
+    server.close(async () => {
+      try {
+        await prisma.$disconnect();
+      } catch {
+        // Ignore disconnect errors during shutdown
+      }
+      console.log("[REBUSS OPS] Conexão com o banco finalizada.");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}
 
 export default app;

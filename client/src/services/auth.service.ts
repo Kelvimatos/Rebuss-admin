@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+import { api, API_BASE_URL } from "./api.js";
 import { User } from "../types/index.js";
 
 export const authService = {
@@ -53,7 +53,7 @@ export const authService = {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch("/api/auth/profile/avatar", {
+    const res = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
       method: "POST",
       headers,
       body: formData,
