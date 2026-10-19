@@ -198,8 +198,10 @@ export class AuthController {
       const result = await authService.requestPasswordReset(email);
       res.status(200).json({
         success: true,
-        message: "Se o e-mail estiver cadastrado, o token de redefinição seguro foi emitido.",
-        resetToken: result.resetToken,
+        message: "Se o e-mail estiver cadastrado, as instruções de redefinição foram processadas com segurança.",
+        ...(process.env.NODE_ENV !== "production" && result.resetToken
+          ? { devResetToken: result.resetToken }
+          : {}),
       });
     } catch (error) {
       next(error);

@@ -61,11 +61,12 @@ export const Login: React.FC = () => {
     setResetLoading(true);
     try {
       const res = await authService.requestPasswordReset(resetEmail.trim());
-      if (res.resetToken) {
-        setResetToken(res.resetToken);
+      const tokenReceived = res.devResetToken || res.resetToken;
+      if (tokenReceived) {
+        setResetToken(tokenReceived);
       }
       setResetStep("confirm");
-      toast.success("Solicitação validada. Defina sua nova senha segura.");
+      toast.success(res.message || "Solicitação processada com sucesso.");
     } catch (err: any) {
       setErrorMessage(err.message || "Erro ao iniciar redefinição de senha.");
     } finally {

@@ -283,7 +283,7 @@ async function runTests() {
   } catch {
     const { default: app } = await import("../server.js");
     await new Promise<void>((resolve) => {
-      tempServer = app.listen(0, "127.0.0.1", () => {
+      tempServer = (app as any).listen(0, "127.0.0.1", () => {
         const addr = tempServer.address();
         const port = typeof addr === "object" && addr ? addr.port : 3001;
         apiBase = `http://127.0.0.1:${port}/api`;

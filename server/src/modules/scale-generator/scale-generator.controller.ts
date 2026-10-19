@@ -27,10 +27,7 @@ export class ScaleGeneratorController {
 
       const parsed = locateAddressSchema.parse(rawPayload);
       const result = await scaleGeneratorService.locateAndFindTransit(parsed);
-      res.status(200).json({
-        success: true,
-        ...result,
-      });
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

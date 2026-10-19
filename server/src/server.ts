@@ -3,28 +3,72 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
+import fs from "fs";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import apiRouter from "./routes/index.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
 import prisma from "./lib/prisma.js";
+import { getAllowedOrigins } from "./config/security.env.js";
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const isProduction = process.env.NODE_ENV === "production";
 
-// Configure CORS for cookies and client requests
+// Disable fingerprinting
+app.disable("x-powered-by");
+
+// Trust proxy if deployed behind reverse proxy (Render, Vercel, Railway, Nginx, Cloudflare)
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
+
+// 1. Security Headers with Helmet
+app.use(
+  helmet({
+    frameguard: { action: "deny" },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        connectSrc: ["'self'", "https:", "http://127.0.0.1:3001", "http://localhost:3001"],
+        fontSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Permite carregar avatares estáticos no frontend
+  })
+);
+
+// 2. Strict CORS Configuration
+const allowedOrigins = getAllowedOrigins();
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin)
+      // Permite requisições sem header Origin (ex: mobile apps, curl, chamadas internas same-origin)
       if (!origin) return callback(null, true);
-      if (
-        origin === FRONTEND_URL ||
-        origin === "http://localhost:5173" ||
-        origin === "http://127.0.0.1:5173"
-      ) {
+
+      const normalizedOrigin = origin.trim().replace(/\/$/, "");
+      if (allowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       }
-      return callback(null, true); // Allow dev origins safely
+
+      // Em ambiente de desenvolvimento local, permite localhost e 127.0.0.1 em qualquer porta
+      if (!isProduction) {
+        if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin)) {
+          return callback(null, true);
+        }
+      }
+
+      // Em produção, rejeita qualquer origem não autorizada
+      return callback(
+        new Error(`Origem [${origin}] não autorizada pelas políticas de segurança CORS do Rebuss Ops.`),
+        false
+      );
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -32,22 +76,58 @@ app.use(
   })
 );
 
+// 3. Global API Rate Limiting (Proteção contra DoS e abuso)
+const apiGlobalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 600, // 600 requisições por IP a cada 15 minutos
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Limite de requisições excedido. Aguarde alguns minutos antes de tentar novamente.",
+  },
+});
+app.use("/api", apiGlobalLimiter);
+
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
-// Serve uploaded avatars and media statically
+// 4. Static Files with path traversal protection
 const uploadsPath = path.resolve(process.cwd(), "uploads");
-app.use("/uploads", express.static(uploadsPath));
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use("/uploads", express.static(uploadsPath, { dotfiles: "deny", maxAge: isProduction ? "7d" : 0 }));
 
-// Serve Gerador de Escalas legacy files as a static route so it can be previewed/embedded
 const geradorPath = path.resolve(process.cwd(), "Gerador-de-Escala-Rebuss-main");
-app.use("/legacy-tools/gerador-de-escala", express.static(geradorPath));
+if (fs.existsSync(geradorPath)) {
+  app.use("/legacy-tools/gerador-de-escala", express.static(geradorPath, { dotfiles: "deny" }));
+}
 
-// API routes
+// 5. REST API routes
 app.use("/api", apiRouter);
 
-// Error handling
+// 6. Production SPA Serving (permite rodar frontend compilado e backend em um único serviço unificado)
+if (isProduction) {
+  const clientDistPath = path.resolve(process.cwd(), "client", "dist");
+  if (fs.existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath, { dotfiles: "deny", maxAge: "1d" }));
+    app.get("*", (req, res, next) => {
+      // Ignora rotas de API e arquivos estáticos especiais
+      if (
+        req.path.startsWith("/api") ||
+        req.path.startsWith("/uploads") ||
+        req.path.startsWith("/legacy-tools")
+      ) {
+        return next();
+      }
+      res.sendFile(path.join(clientDistPath, "index.html"));
+    });
+  }
+}
+
+// 7. Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
 

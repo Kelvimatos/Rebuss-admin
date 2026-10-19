@@ -88,8 +88,8 @@ export const authService = {
     });
   },
 
-  async requestPasswordReset(email: string): Promise<{ resetToken: string | null; message: string }> {
-    return api.post<{ success: boolean; resetToken: string | null; message: string }>(
+  async requestPasswordReset(email: string): Promise<{ resetToken?: string | null; devResetToken?: string | null; message: string }> {
+    return api.post<{ success: boolean; resetToken?: string | null; devResetToken?: string | null; message: string }>(
       "/auth/password-reset/request",
       { email }
     );

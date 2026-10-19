@@ -100,6 +100,27 @@ export class UsersService {
       throw err;
     }
 
+    const primaryAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || "kelvimatosalves@gmail.com").toLowerCase().trim();
+    const isPrimaryAdmin = user.email.toLowerCase() === primaryAdminEmail;
+
+    if (isPrimaryAdmin) {
+      if (input.perfil && input.perfil !== "ADMIN") {
+        const err = new Error("A conta do administrador principal não pode ter seu perfil alterado.");
+        (err as any).statusCode = 403;
+        throw err;
+      }
+      if (input.ativo === false) {
+        const err = new Error("A conta do administrador principal não pode ser desativada.");
+        (err as any).statusCode = 400;
+        throw err;
+      }
+      if (input.email && input.email.toLowerCase().trim() !== primaryAdminEmail) {
+        const err = new Error("O e-mail do administrador principal não pode ser modificado.");
+        (err as any).statusCode = 403;
+        throw err;
+      }
+    }
+
     const dataToUpdate: any = {};
 
     if (input.nome !== undefined) dataToUpdate.nome = input.nome.trim();
@@ -156,6 +177,13 @@ export class UsersService {
     if (!user) {
       const err = new Error("Usuário não encontrado.");
       (err as any).statusCode = 404;
+      throw err;
+    }
+
+    const primaryAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || "kelvimatosalves@gmail.com").toLowerCase().trim();
+    if (user.email.toLowerCase() === primaryAdminEmail && !input.ativo) {
+      const err = new Error("A conta do administrador principal não pode ser desativada.");
+      (err as any).statusCode = 400;
       throw err;
     }
 

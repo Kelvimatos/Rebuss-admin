@@ -5,8 +5,8 @@ import path from "path";
 import prisma from "../../lib/prisma.js";
 import { registrarAtividade } from "../../lib/audit.js";
 import { LoginInput } from "./auth.schemas.js";
+import { JWT_SECRET } from "../../config/security.env.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "rebuss_ops_secret_key_jwt_auth_session_token_2026_secure";
 const JWT_EXPIRES_IN = "7d";
 
 export class AuthService {

@@ -1,0 +1,48 @@
+# ==============================================================================
+# REBUSS OPS — RENDER BLUEPRINT SPECIFICATION (render.yaml)
+# ==============================================================================
+# Este arquivo provisiona automaticamente a aplicação REBUSS OPS no Render:
+# 1. Banco de Dados PostgreSQL gerenciado
+# 2. Web Service Fullstack (Node.js Express + React 19 SPA)
+# ==============================================================================
+
+services:
+  - type: web
+    name: rebuss-ops-app
+    runtime: node
+    plan: starter
+    region: ohio
+    branch: master
+    buildCommand: npm install && cd client && npm install && cd .. && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rebuss-ops-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: INITIAL_ADMIN_EMAIL
+        value: kelvimatosalves@gmail.com
+      - key: INITIAL_ADMIN_NAME
+        value: Kelvi Matos
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+
+databases:
+  - name: rebuss-ops-db
+    plan: starter
+    region: ohio
+    databaseName: rebuss_ops
+    user: rebuss_admin
+

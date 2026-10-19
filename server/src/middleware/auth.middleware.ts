@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.js";
-
-const JWT_SECRET = process.env.JWT_SECRET || "rebuss_ops_secret_key_jwt_auth_session_token_2026_secure";
+import { JWT_SECRET } from "../config/security.env.js";
 
 export interface AuthenticatedUser {
   id: string;

@@ -313,10 +313,19 @@ export class ScaleGeneratorService {
         );
         if (res.url && res.url !== urlToInspect) {
           const redirectHost = new URL(res.url).hostname.toLowerCase();
-          if (
-            redirectHost.includes("google.com") ||
-            redirectHost.includes("goo.gl")
-          ) {
+          const isAllowedRedirect =
+            redirectHost === "maps.google.com" ||
+            redirectHost === "www.google.com" ||
+            redirectHost === "google.com" ||
+            redirectHost === "maps.google.com.br" ||
+            redirectHost === "www.google.com.br" ||
+            redirectHost === "google.com.br" ||
+            redirectHost === "goo.gl" ||
+            redirectHost === "maps.app.goo.gl" ||
+            redirectHost.endsWith(".google.com") ||
+            redirectHost.endsWith(".google.com.br");
+
+          if (isAllowedRedirect) {
             urlToInspect = res.url;
           }
         }

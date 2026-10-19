@@ -221,7 +221,7 @@ async function runAuthTests() {
     console.log("==========================================================");
   } finally {
     if (server) {
-      server.close();
+      (server as any)?.close();
     }
     await prisma.$disconnect();
   }
