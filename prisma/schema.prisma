@@ -1,0 +1,97 @@
+// Prisma schema for REBUSS OPS
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Perfil {
+  ADMIN
+  OPERADOR
+}
+
+model Usuario {
+  id             String        @id @default(uuid())
+  nome           String
+  email          String        @unique
+  senhaHash      String
+  avatarUrl      String?
+  perfil         Perfil        @default(OPERADOR)
+  ativo          Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  equipesCriadas EquipeFixa[]
+  atividades     Atividade[]
+
+  @@map("usuarios")
+}
+
+model EquipeFixa {
+  id          String             @id @default(uuid())
+  nome        String
+  regiao      String             // "RJ", "SP", "SJC", etc.
+  supervisor  String?            // Supervisor responsável pela equipe
+  descricao   String?
+  ativo       Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdById String?
+  createdBy   Usuario?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  membros     MembroEquipeFixa[]
+
+  @@index([regiao])
+  @@index([ativo])
+  @@map("equipes_fixas")
+}
+
+model MembroEquipeFixa {
+  id        String     @id @default(uuid())
+  equipeId  String
+  equipe    EquipeFixa @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  nome      String
+  numero    String?    // Preserva zeros à esquerda (ex: "01", "02")
+  matricula String?    // Matrícula funcional (nula quando "—")
+  cargo     String     // Cargo ou função (ex: "Supervisor", "Contador", "Operador")
+  funcao    String?    // Função específica de trabalho
+  ordem     Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([equipeId])
+  @@index([ordem])
+  @@index([matricula])
+  @@map("membros_equipes_fixas")
+}
+
+model Ferramenta {
+  id        String   @id @default(uuid())
+  nome      String
+  descricao String?
+  slug      String   @unique
+  icone     String   // ex: "Users", "Calendar", "Wrench"
+  rota      String   // ex: "/tools/equipes-fixas"
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ferramentas")
+}
+
+model Atividade {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  tipo      String   // "EQUIPE_CRIADA", "MEMBRO_ADICIONADO", "LOGIN", etc.
+  descricao String
+  detalhes  String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("atividades")
+}
+

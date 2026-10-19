@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gerador de Escalas - REBUSS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="./img/favicon.png" type="image/png" />
+</head>
+<body>
+<div class="layout">
+
+
+  <div class="card">
+    <header class="header">
+      <h1>Gerador de Escalas <span class="badge">REBUSS</span></h1>
+      <p>Preencha os dados e gere a mensagem</p>
+    </header>
+
+    
+    <div class="form-group">
+      <label>Cidade</label>
+      <div class="city-tabs">
+        <button class="city-tab active" onclick="selectCity('São Paulo','SP',this)">São Paulo</button>
+        <button class="city-tab" onclick="selectCity('Rio de Janeiro','RJ',this)">Rio de Janeiro</button>
+        <button class="city-tab" onclick="selectCity('Belo Horizonte','MG',this)">Belo Horizonte</button>
+        <button class="city-tab" onclick="selectCity('Goiânia','GO',this)">Goiânia</button>
+        <button class="city-tab" onclick="selectCity('Brasília','DF',this)">Brasília</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="userName">Seu Nome</label>
+      <input type="text" id="userName" placeholder="Seu nome (ex: Kelvi, Matheus…)" />
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label for="date">Data</label>
+        <input type="date" id="date" />
+      </div>
+      <div>
+        <label for="time">Horário</label>
+        <input type="time" id="time" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="store">Loja</label>
+      <input type="text" id="store" placeholder="Ex: GPA, Carrefour…" />
+    </div>
+
+    <div class="form-group">
+      <label for="address">Endereço</label>
+      <input type="text" id="address" placeholder="Rua, número – bairro"
+        oninput="scheduleStationSearch()" />
+      <div class="station-row">
+        <div class="station-spinner" id="spinner"></div>
+        <div class="station-chip hidden" id="station-chip">
+          <span class="line-dot" id="line-dot"></span>
+          <span id="station-name"></span>
+          <span class="station-dist" id="station-dist"></span>
+        </div>
+        <span class="station-error" id="station-error">Nenhuma estação/terminal encontrado num raio de 30 km</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="arrival">Link do Maps (Chegada)</label>
+      <input type="url" id="arrival" placeholder="Cole aqui o link do Google Maps ou Maps…" />
+      <div class="maps-hint" id="maps-hint"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="obs">Observações</label>
+      <textarea id="obs" placeholder="Opcional"></textarea>
+    </div>
+
+    <div class="toggle-row" onclick="toggleStation()">
+      <span>Incluir estação/terminal na mensagem</span>
+      <div class="toggle-switch on" id="station-toggle"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="generate()">⚡ Gerar Mensagem</button>
+      <button class="btn-sec" onclick="copyText()">Copiar</button>
+    </div>
+
+    <section class="preview-section">
+      <h3>Prévia</h3>
+      <div id="preview" class="preview"></div>
+    </section>
+  </div>
+
+  
+  <div class="history-panel">
+    <div class="history-header">
+      <div class="history-title-wrapper">
+        <h2>Histórico</h2>
+        <span class="history-count" id="history-count">0</span>
+      </div>
+      <button class="btn-clear-all" onclick="clearAll()">Limpar tudo</button>
+    </div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-top">
+      <span class="modal-title" id="modal-title">Escala</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-msg" id="modal-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" style="flex:1;padding:11px;font-size:13px" onclick="copyModal()">Copiar mensagem</button>
+      <button class="btn-sec" style="padding:11px 16px;font-size:13px" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span id="toast-ico">✓</span> <span id="toast-msg"></span></div>
+
+<script src="script.js"></script>
+</body>
+</html>
