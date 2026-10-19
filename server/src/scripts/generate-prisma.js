@@ -5,3 +5,4 @@ try {
 } catch (err) {
   console.warn("[Prisma] Aviso na geração do cliente (utilizando cliente existente):", err.message);
 }
+
