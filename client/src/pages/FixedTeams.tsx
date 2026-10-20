@@ -106,7 +106,7 @@ export const FixedTeams: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedRegion, statusFilter, toast]);
+  }, [searchQuery, selectedRegion, statusFilter]);
 
   useEffect(() => {
     fetchTeams();

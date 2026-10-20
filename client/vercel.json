@@ -18,8 +18,32 @@
       "destination": "/api/health.js"
     },
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*.js"
+      "source": "/api/dashboard/stats",
+      "destination": "/api/dashboard/stats.js"
+    },
+    {
+      "source": "/api/tools",
+      "destination": "/api/tools.js"
+    },
+    {
+      "source": "/api/fixed-teams/:path*",
+      "destination": "/api/fixed-teams.js"
+    },
+    {
+      "source": "/api/fixed-teams",
+      "destination": "/api/fixed-teams.js"
+    },
+    {
+      "source": "/api/users/:path*",
+      "destination": "/api/users.js"
+    },
+    {
+      "source": "/api/users",
+      "destination": "/api/users.js"
+    },
+    {
+      "source": "/api/scale-generator/locate",
+      "destination": "/api/scale-generator/locate.js"
     },
     {
       "source": "/((?!api).*)",

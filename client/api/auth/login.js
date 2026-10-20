@@ -14,7 +14,7 @@ const REGISTERED_USERS = [
     email: "kelvimatosalves@gmail.com",
     perfil: "ADMIN",
     ativo: true,
-    senhaHash: "$2b$12$Nz9beUoIxF6IFhUaDD/dIOxPVkKnhHIFNRzEPf/YfcqIgPV8lkb8G",
+    senhaHash: "$2b$10$vtM42UWHT4/Re.ByugeBC.2RmVvzAa/C0NPjNOXo//1KvPDQStP/a",
   },
   {
     id: "d626134f-1105-4d97-bc27-bc189dbe9297",
