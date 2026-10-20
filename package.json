@@ -23,6 +23,7 @@
     "test:scale-generator": "tsx server/src/scripts/test-scale-generator.ts",
     "test:auth-permissions": "tsx server/src/scripts/test-auth-permissions.ts",
     "test:security": "tsx server/src/scripts/test-appsec-hardening.ts",
+    "test:routine": "tsx test/routine-assistant.test.ts",
     "bot": "node src/index.js",
     "bot:dev": "nodemon src/index.js",
     "test:bot": "node src/tests/bot.test.js"
