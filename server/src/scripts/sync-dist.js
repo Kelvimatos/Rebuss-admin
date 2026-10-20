@@ -18,3 +18,4 @@ try {
 } catch (err) {
   console.warn('[Sync Dist] Aviso durante sincronização de diretórios:', err.message);
 }
+
