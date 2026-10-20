@@ -19,7 +19,7 @@
       "destination": "/api/health"
     },
     {
-      "source": "/((?!api).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
