@@ -6,19 +6,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/[...all]"
+      "destination": "/api"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ],
   "functions": {
-    "api/[...all].js": {
-      "includeFiles": "{dist/**,prisma/**,node_modules/.prisma/**}",
-      "maxDuration": 30
-    },
-    "api/index.js": {
+    "api/**": {
       "includeFiles": "{dist/**,prisma/**,node_modules/.prisma/**}",
       "maxDuration": 30
     }
