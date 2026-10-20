@@ -1,5 +1,8 @@
 // Base URL for API requests. Defaults to relative "/api", but can be pointed to an external backend via VITE_API_URL.
-export const API_BASE_URL = (import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/$/, "") : "") + "/api";
+const rawApiUrl = (import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, "") : "");
+export const API_BASE_URL = rawApiUrl
+  ? (rawApiUrl.endsWith("/api") ? rawApiUrl : `${rawApiUrl}/api`)
+  : "/api";
 
 export class ApiError extends Error {
   statusCode: number;
