@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
-import fs from "fs";
-import path from "path";
+import { initialData } from "./data/initial-data.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET ||
@@ -10,30 +9,9 @@ const JWT_SECRET =
 let cachedData = null;
 
 function loadData() {
-  if (cachedData) return cachedData;
-  try {
-    const dataPath = path.resolve(process.cwd(), "api/data/initial-data.json");
-    if (fs.existsSync(dataPath)) {
-      const content = fs.readFileSync(dataPath, "utf8");
-      cachedData = JSON.parse(content);
-      return cachedData;
-    }
-  } catch {
-    // fallback
+  if (!cachedData) {
+    cachedData = JSON.parse(JSON.stringify(initialData));
   }
-
-  try {
-    const clientPath = path.resolve(process.cwd(), "client/api/data/initial-data.json");
-    if (fs.existsSync(clientPath)) {
-      const content = fs.readFileSync(clientPath, "utf8");
-      cachedData = JSON.parse(content);
-      return cachedData;
-    }
-  } catch {
-    // fallback
-  }
-
-  cachedData = { teams: [], tools: [], users: [] };
   return cachedData;
 }
 

@@ -36,7 +36,9 @@ uploads/avatars/*
 !uploads/avatars/.gitkeep
 
 # Runtime data & sqlite databases
-data/
+/data/
+!api/data/
+!client/api/data/
 *.sqlite
 *.sqlite-journal
 
