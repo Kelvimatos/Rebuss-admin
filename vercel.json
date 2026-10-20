@@ -6,13 +6,23 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api/[...all]"
     },
     {
-      "source": "/((?!api/.*).*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
+  "functions": {
+    "api/[...all].js": {
+      "includeFiles": "{dist/**,prisma/**,node_modules/.prisma/**}",
+      "maxDuration": 30
+    },
+    "api/index.js": {
+      "includeFiles": "{dist/**,prisma/**,node_modules/.prisma/**}",
+      "maxDuration": 30
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

@@ -8,6 +8,7 @@
     "dev:server": "tsx watch --ignore ./client/** --ignore ./.wwebjs_auth/** --ignore ./.wwebjs_cache/** --ignore ./uploads/** --ignore ./data/** server/src/server.ts",
     "dev:client": "npm run dev --prefix client",
     "build": "node server/src/scripts/generate-prisma.js && npm run build:client && tsc -p tsconfig.json && node server/src/scripts/sync-dist.js",
+    "postinstall": "node server/src/scripts/generate-prisma.js",
     "build:client": "npm run build --prefix client",
     "build:server": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
