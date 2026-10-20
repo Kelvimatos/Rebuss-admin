@@ -3,34 +3,42 @@ const path = require('path');
 
 try {
   const projectRoot = path.resolve(__dirname, '../../../');
-  const src = path.resolve(projectRoot, 'client/dist');
-  const distDest = path.resolve(projectRoot, 'dist');
-  const publicDest = path.resolve(projectRoot, 'public');
+  const clientDist = path.resolve(projectRoot, 'client/dist');
+  const rootDist = path.resolve(projectRoot, 'dist');
+  const rootPublic = path.resolve(projectRoot, 'public');
 
-  // 1. Sincroniza o frontend estático do Vite para dist/ e public/
-  if (fs.existsSync(src)) {
-    if (!fs.existsSync(distDest)) {
-      fs.mkdirSync(distDest, { recursive: true });
+  // 1. Sincroniza o frontend estático compilado pelo Vite para dist/ e public/
+  if (fs.existsSync(clientDist)) {
+    if (!fs.existsSync(rootDist)) {
+      fs.mkdirSync(rootDist, { recursive: true });
     }
-    fs.cpSync(src, distDest, { recursive: true });
+    fs.cpSync(clientDist, rootDist, { recursive: true });
 
-    if (!fs.existsSync(publicDest)) {
-      fs.mkdirSync(publicDest, { recursive: true });
+    if (!fs.existsSync(rootPublic)) {
+      fs.mkdirSync(rootPublic, { recursive: true });
     }
-    fs.cpSync(src, publicDest, { recursive: true });
+    fs.cpSync(clientDist, rootPublic, { recursive: true });
     console.log('[Sync Dist] Frontend estático sincronizado com sucesso para ./dist e ./public');
-  } else {
-    console.warn('[Sync Dist] Aviso: client/dist ainda não existe para sincronização.');
   }
 
-  // 2. Sincroniza as funções serverless para dist/api (caso Vercel procure dentro de dist)
-  const apiSrc = path.resolve(projectRoot, 'api');
-  const apiDest = path.resolve(projectRoot, 'dist/api');
-  if (fs.existsSync(apiSrc)) {
-    fs.mkdirSync(apiDest, { recursive: true });
-    fs.cpSync(apiSrc, apiDest, { recursive: true });
-    console.log('[Sync Dist] Funções serverless sincronizadas com sucesso para ./dist/api');
+  // 2. Garante paridade total das Serverless Functions entre client/api e root api/
+  // Vercel com Root Directory = "client" usa client/api
+  // Vercel com Root Directory = "./" usa ./api
+  const clientApi = path.resolve(projectRoot, 'client/api');
+  const rootApi = path.resolve(projectRoot, 'api');
+
+  if (fs.existsSync(clientApi)) {
+    if (!fs.existsSync(rootApi)) {
+      fs.mkdirSync(rootApi, { recursive: true });
+    }
+    fs.cpSync(clientApi, rootApi, { recursive: true });
+  } else if (fs.existsSync(rootApi)) {
+    if (!fs.existsSync(clientApi)) {
+      fs.mkdirSync(clientApi, { recursive: true });
+    }
+    fs.cpSync(rootApi, clientApi, { recursive: true });
   }
+  console.log('[Sync Dist] Serverless Functions sincronizadas e compatíveis com Vercel (client/api e api/)');
 } catch (err) {
   console.warn('[Sync Dist] Aviso durante sincronização de diretórios:', err.message);
 }

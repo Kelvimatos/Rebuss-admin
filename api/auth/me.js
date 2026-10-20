@@ -127,7 +127,7 @@ export default async function handler(req, res) {
         ativo: user.ativo,
       },
     });
-  } catch (err) {
+  } catch (_err) {
     return res.status(401).json({
       success: false,
       message: "Sessão expirada ou token inválido. Faça login novamente.",
