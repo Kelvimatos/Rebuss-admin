@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { initialData } from "./data/initial-data.js";
+import { initialData } from "./_data/initial-data.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET ||

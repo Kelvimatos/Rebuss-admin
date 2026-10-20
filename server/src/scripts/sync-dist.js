@@ -39,19 +39,6 @@ try {
     fs.cpSync(rootApi, clientApi, { recursive: true });
   }
   console.log('[Sync Dist] Serverless Functions sincronizadas e compatíveis com Vercel (client/api e api/)');
-
-  // 3. Garante que dist/api e client/dist/api também tenham as funções serverless
-  const rootDistApi = path.resolve(projectRoot, 'dist/api');
-  const clientDistApi = path.resolve(projectRoot, 'client/dist/api');
-  if (!fs.existsSync(rootDistApi)) {
-    fs.mkdirSync(rootDistApi, { recursive: true });
-  }
-  fs.cpSync(clientApi, rootDistApi, { recursive: true });
-  if (!fs.existsSync(clientDistApi)) {
-    fs.mkdirSync(clientDistApi, { recursive: true });
-  }
-  fs.cpSync(clientApi, clientDistApi, { recursive: true });
-  console.log('[Sync Dist] Serverless Functions sincronizadas para dist/api e client/dist/api');
 } catch (err) {
   console.warn('[Sync Dist] Aviso durante sincronização de diretórios:', err.message);
 }

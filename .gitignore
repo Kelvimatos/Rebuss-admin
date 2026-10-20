@@ -37,8 +37,8 @@ uploads/avatars/*
 
 # Runtime data & sqlite databases
 /data/
-!api/data/
-!client/api/data/
+!api/_data/
+!client/api/_data/
 *.sqlite
 *.sqlite-journal
 

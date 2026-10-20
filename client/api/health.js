@@ -13,7 +13,7 @@ export default function handler(req, res) {
   res.status(200).json({
     status: "ok",
     app: "REBUSS OPS API",
-    version: "2.1.0-teams-inlined",
+    version: "2.2.0-kcarate-auth",
     source: "client/api",
     timestamp: new Date().toISOString(),
     database: {

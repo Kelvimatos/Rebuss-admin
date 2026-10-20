@@ -12,11 +12,11 @@ async function run() {
   console.log(`    Status: ${hRes.status}`);
 
   // 2. Login Admin
-  console.log(`\n[2] POST /api/auth/login (Admin: kelvimatosalves@gmail.com)`);
+  console.log(`\n[2] POST /api/auth/login (Admin: kelvimatosalves@gmail.com / Kcarate123#)`);
   const adminLogRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "kelvimatosalves@gmail.com", password: "1234" }),
+    body: JSON.stringify({ email: "kelvimatosalves@gmail.com", password: "Kcarate123#" }),
   });
   console.log(`    Status: ${adminLogRes.status}`);
   const adminData = await adminLogRes.json();
