@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobile }) => {
             </span>
           </div>
           <div className="flex h-7 w-7 items-center justify-center rounded bg-secondary text-foreground font-mono font-semibold text-xs border border-border overflow-hidden">
-            {user?.avatarUrl ? (
+            {user?.avatarUrl && user.avatarUrl !== "/api/auth/profile/avatar" ? (
               <img
                 src={user.avatarUrl}
                 alt={user.nome}

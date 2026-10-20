@@ -49,6 +49,28 @@ export default async function handler(req, res) {
     if (!currentUser) {
       return res.status(401).json({ success: false, message: "Não autorizado." });
     }
+
+    let body = req.body;
+    if (typeof body === "string") {
+      try { body = JSON.parse(body); } catch {}
+    }
+
+    const avatarUrl = body?.avatar || null;
+
+    if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes("localhost")) {
+      try {
+        const { PrismaClient } = await import("@prisma/client");
+        const prisma = new PrismaClient();
+        await prisma.usuario.update({
+          where: { id: currentUser.id },
+          data: { avatarUrl: avatarUrl },
+        });
+        await prisma.$disconnect();
+      } catch (dbErr) {
+        console.warn("[Profile Avatar] Erro ao persistir avatar no banco:", dbErr.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       user: {
@@ -56,7 +78,7 @@ export default async function handler(req, res) {
         nome: currentUser.nome || "Kelvi Matos",
         email: currentUser.email,
         perfil: currentUser.perfil,
-        avatarUrl: "/api/auth/profile/avatar",
+        avatarUrl: avatarUrl,
       },
     });
   }

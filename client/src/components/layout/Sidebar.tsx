@@ -204,7 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-secondary text-foreground font-mono font-semibold text-xs border border-border overflow-hidden hover:border-primary/40 transition-colors"
               title="Meu Perfil"
             >
-              {user?.avatarUrl ? (
+              {user?.avatarUrl && user.avatarUrl !== "/api/auth/profile/avatar" ? (
                 <img
                   src={user.avatarUrl}
                   alt={user.nome}

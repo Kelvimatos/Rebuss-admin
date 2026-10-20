@@ -13,7 +13,7 @@ export default function handler(req, res) {
   res.status(200).json({
     status: "ok",
     app: "REBUSS OPS API",
-    version: "2.3.0-profile-avatar-clean",
+    version: "2.4.0-avatar-datauri",
     source: "client/api",
     timestamp: new Date().toISOString(),
     database: {

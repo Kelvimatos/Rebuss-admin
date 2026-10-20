@@ -170,7 +170,7 @@ export const Profile: React.FC = () => {
                     alt="Prévia do avatar"
                     className="h-full w-full object-cover"
                   />
-                ) : user?.avatarUrl ? (
+                ) : user?.avatarUrl && user.avatarUrl !== "/api/auth/profile/avatar" ? (
                   <img
                     src={user.avatarUrl}
                     alt={user.nome}

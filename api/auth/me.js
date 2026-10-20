@@ -125,6 +125,7 @@ export default async function handler(req, res) {
         email: user.email,
         perfil: user.perfil,
         ativo: user.ativo,
+        avatarUrl: user.avatarUrl || null,
       },
     });
   } catch (_err) {

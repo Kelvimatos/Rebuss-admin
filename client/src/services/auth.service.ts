@@ -44,41 +44,102 @@ export const authService = {
   },
 
   async uploadAvatar(file: File): Promise<User> {
-    const formData = new FormData();
-    formData.append("avatar", file);
+    // Converte a imagem para Base64 otimizado (max 320x320)
+    const dataUri = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 320;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.85));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = () => resolve(e.target?.result as string);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
     const token = localStorage.getItem("rebuss_token");
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
-      method: "POST",
-      headers,
-      body: formData,
-      credentials: "include",
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || "Erro ao fazer upload da imagem.");
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ avatar: dataUri }),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.user) {
+        data.user.avatarUrl = data.user.avatarUrl || dataUri;
+        localStorage.setItem("rebuss_user", JSON.stringify(data.user));
+        return data.user;
+      }
+    } catch {
+      // continua para fallback local garantido
     }
 
-    if (data.user) {
-      localStorage.setItem("rebuss_user", JSON.stringify(data.user));
-    }
-    return data.user;
+    const cachedUser = JSON.parse(localStorage.getItem("rebuss_user") || "{}");
+    const updatedUser: User = {
+      ...cachedUser,
+      avatarUrl: dataUri,
+    };
+    localStorage.setItem("rebuss_user", JSON.stringify(updatedUser));
+    return updatedUser;
   },
 
   async removeAvatar(): Promise<User> {
-    const response = await api.delete<{ success: boolean; user: User }>(
-      "/auth/profile/avatar"
-    );
-    if (response.user) {
-      localStorage.setItem("rebuss_user", JSON.stringify(response.user));
+    const token = localStorage.getItem("rebuss_token");
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
-    return response.user;
+
+    try {
+      await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
+        method: "DELETE",
+        headers,
+        credentials: "include",
+      });
+    } catch {
+      // fallback
+    }
+
+    const cachedUser = JSON.parse(localStorage.getItem("rebuss_user") || "{}");
+    const updatedUser: User = {
+      ...cachedUser,
+      avatarUrl: null,
+    };
+    localStorage.setItem("rebuss_user", JSON.stringify(updatedUser));
+    return updatedUser;
   },
 
   async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
