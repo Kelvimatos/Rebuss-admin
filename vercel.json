@@ -1,19 +1,30 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
   "framework": null,
   "buildCommand": "npm run build",
   "rewrites": [
+    {
+      "source": "/api/auth/login",
+      "destination": "/api/auth/login"
+    },
+    {
+      "source": "/api/auth/me",
+      "destination": "/api/auth/me"
+    },
+    {
+      "source": "/api/auth/logout",
+      "destination": "/api/auth/logout"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
     {
       "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ],
-  "functions": {
-    "api/**": {
-      "includeFiles": "{dist/**,prisma/**,node_modules/.prisma/**}",
-      "maxDuration": 30
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",

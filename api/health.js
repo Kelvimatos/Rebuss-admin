@@ -1,18 +1,24 @@
-// Vercel Serverless Function for GET /api/health
-process.env.VERCEL = process.env.VERCEL || "1";
-
-let serverModule;
-try {
-  serverModule = require("../dist/server.js");
-} catch {
-  try {
-    serverModule = require("./dist/server.js");
-  } catch {
-    serverModule = require("../server.js");
+export default function handler(req, res) {
+  const hasDb = Boolean(process.env.DATABASE_URL);
+  let dbTarget = "não configurado";
+  if (hasDb) {
+    const raw = process.env.DATABASE_URL;
+    if (raw.includes("@")) {
+      dbTarget = raw.split("@")[1].split("/")[0];
+    } else {
+      dbTarget = "configurado (formato opaco)";
+    }
   }
+
+  res.status(200).json({
+    status: "ok",
+    app: "REBUSS OPS API",
+    source: "client/api",
+    timestamp: new Date().toISOString(),
+    database: {
+      configured: hasDb,
+      target: dbTarget,
+    },
+    jwtConfigured: Boolean(process.env.JWT_SECRET),
+  });
 }
-
-const app = serverModule.default || serverModule;
-
-module.exports = app;
-
