@@ -19,6 +19,8 @@ dist
 dist-ssr
 client/dist
 server/dist
+public/*
+!public/.gitkeep
 
 # Local overrides & cache
 *.local
