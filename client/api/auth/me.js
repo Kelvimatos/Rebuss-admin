@@ -11,3 +11,4 @@ export default function handler(req, res) {
     message: "Usuário autenticado"
   });
 }
+
