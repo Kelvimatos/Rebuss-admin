@@ -175,8 +175,6 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       message: "Erro interno ao processar autenticação.",
-      detail: error?.message,
-      stack: error?.stack,
     });
   }
 }
