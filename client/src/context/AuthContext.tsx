@@ -19,6 +19,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
+    const token = localStorage.getItem("rebuss_token");
+    if (!token) {
+      localStorage.removeItem("rebuss_user");
+      return null;
+    }
     const cached = localStorage.getItem("rebuss_user");
     if (cached) {
       try {
@@ -32,10 +37,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   const checkAuth = useCallback(async () => {
+    const token = localStorage.getItem("rebuss_token");
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       const currentUser = await authService.getMe();
       setUser(currentUser);
     } catch {
+      localStorage.removeItem("rebuss_token");
+      localStorage.removeItem("rebuss_user");
       setUser(null);
     } finally {
       setLoading(false);

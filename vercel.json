@@ -16,6 +16,18 @@
       "destination": "/api/auth/logout.js"
     },
     {
+      "source": "/api/auth/profile/:path*",
+      "destination": "/api/auth/profile.js"
+    },
+    {
+      "source": "/api/auth/profile",
+      "destination": "/api/auth/profile.js"
+    },
+    {
+      "source": "/uploads/avatars/:path*",
+      "destination": "/api/auth/profile.js"
+    },
+    {
       "source": "/api/health",
       "destination": "/api/health.js"
     },

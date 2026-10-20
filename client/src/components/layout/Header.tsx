@@ -150,6 +150,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobile }) => {
                 src={user.avatarUrl}
                 alt={user.nome}
                 className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
             ) : (
               user?.nome ? user.nome.charAt(0).toUpperCase() : "U"
