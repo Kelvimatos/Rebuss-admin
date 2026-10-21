@@ -59,3 +59,4 @@ export interface RoutineReminder {
   dispensado?: boolean;
   criadoEm: string;
 }
+

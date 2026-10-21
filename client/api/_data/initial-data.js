@@ -3237,7 +3237,7 @@ export const initialData = {
     },
     {
       "id": "d626134f-1105-4d97-bc27-bc189dbe9297",
-      "nome": "Bruno Hack",
+      "nome": "Bruno",
       "email": "bruno@rebuss.com",
       "perfil": "OPERADOR",
       "ativo": true,

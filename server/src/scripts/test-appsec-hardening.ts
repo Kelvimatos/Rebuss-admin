@@ -160,6 +160,7 @@ async function runSecurityTests() {
       (server as any)?.close();
     }
     await prisma.$disconnect();
+    process.exit(0);
   }
 }
 

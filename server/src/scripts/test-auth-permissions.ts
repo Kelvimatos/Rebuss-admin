@@ -187,7 +187,7 @@ async function runAuthTests() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${operatorTokens["bruno@rebuss.com"]}`,
       },
-      body: JSON.stringify({ nome: "Bruno Hack", perfil: "ADMIN" }),
+      body: JSON.stringify({ nome: "Bruno", perfil: "ADMIN" }),
     });
     assert(elevateAttempt.status === 200, "Update profile deve aceitar nome");
     const brunoRecheck = await prisma.usuario.findUnique({
