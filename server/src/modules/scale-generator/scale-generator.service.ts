@@ -404,6 +404,13 @@ export class ScaleGeneratorService {
   ): ParsedAddressComponents {
     let working = workingInput
       .replace(/[\r\n\t]+/g, ", ")
+      .replace(/\bEstr\.\s*/gi, "Estrada ")
+      .replace(/\bAv\.\s*/gi, "Avenida ")
+      .replace(/\bR\.\s*/gi, "Rua ")
+      .replace(/\bAl\.\s*/gi, "Alameda ")
+      .replace(/\bRod\.\s*/gi, "Rodovia ")
+      .replace(/\bPça\.\s*/gi, "Praça ")
+      .replace(/\bTrav\.\s*/gi, "Travessa ")
       .replace(/\s+/g, " ")
       .replace(/\s*,\s*,+/g, ", ")
       .trim();
@@ -465,14 +472,14 @@ export class ScaleGeneratorService {
     const dashTokens = working.split(/\s+[-–]\s+/);
     if (dashTokens.length >= 2) {
       const lastToken = dashTokens[dashTokens.length - 1].trim();
-      if (/^(apto|apt|bloco|bl|sala|sl|andar|conj|cj|loja|lj)\b/i.test(lastToken)) {
+      if (/^(apto|apt|bloco|bl|sala|sl|andar|conj|cj|loja|lj|piso\s*t[eé]rreo|t[eé]rreo|subsolo|mezanino|galp[aã]o)\b/i.test(lastToken)) {
         complement = lastToken;
         streetPart = dashTokens.slice(0, -1).join(" - ").trim();
       } else {
         neighborhood = lastToken;
         if (dashTokens.length >= 3) {
           const middle = dashTokens[dashTokens.length - 2].trim();
-          if (/^(apto|apt|bloco|bl|sala|sl|andar|conj|cj|loja|lj)\b/i.test(middle)) {
+          if (/^(apto|apt|bloco|bl|sala|sl|andar|conj|cj|loja|lj|piso\s*t[eé]rreo|t[eé]rreo|subsolo|mezanino|galp[aã]o)\b/i.test(middle)) {
             complement = middle;
             streetPart = dashTokens.slice(0, -2).join(" - ").trim();
           } else {
