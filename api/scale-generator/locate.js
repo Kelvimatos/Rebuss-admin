@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { REGISTERED_TRANSIT_STATIONS } from "../_data/registered-transit-stations.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET ||
@@ -27,6 +28,20 @@ function verifyUser(req) {
   }
 }
 
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -47,36 +62,164 @@ export default async function handler(req, res) {
     } catch {}
   }
 
-  const input = (body?.input || "").trim();
-  if (!input) {
-    return res.status(400).json({ success: false, message: "Endereço ou termo de busca obrigatório." });
+  const rawInput = (
+    req.method === "GET"
+      ? (req.query.input || req.query.address || req.query.endereco || "")
+      : (body?.input || "")
+  ).trim();
+
+  if (!rawInput) {
+    return res.status(400).json({
+      success: false,
+      message: "Endereço ou termo de busca obrigatório.",
+    });
   }
 
+  const cityHint = (req.method === "GET" ? req.query.cityHint : body?.cityHint) || "";
+  const stateHint = (req.method === "GET" ? req.query.stateHint : body?.stateHint) || "";
+
   try {
-    // Busca via Nominatim OpenStreetMap
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      input
-    )}&addressdetails=1&limit=5&countrycodes=br`;
+    let searchQuery = rawInput;
+    let extractedCoords = null;
 
-    const geoRes = await fetch(nominatimUrl, {
-      headers: {
-        "User-Agent": "RebussOps/1.0 (logistica@rebuss.com)",
-      },
-    });
+    // Se for URL do Google Maps, tenta extrair coordenadas
+    if (/^https?:\/\//i.test(rawInput)) {
+      const coordMatch = rawInput.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (coordMatch) {
+        extractedCoords = {
+          lat: parseFloat(coordMatch[1]),
+          lon: parseFloat(coordMatch[2]),
+        };
+      } else {
+        // Tenta resolver redirect de URL encurtada (ex: maps.app.goo.gl)
+        try {
+          const headRes = await fetch(rawInput, {
+            method: "HEAD",
+            redirect: "follow",
+            headers: {
+              "User-Agent": "RebussOps/1.0 (logistica@rebuss.com)",
+            },
+          });
+          const finalUrl = headRes.url;
+          const finalCoordMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+          if (finalCoordMatch) {
+            extractedCoords = {
+              lat: parseFloat(finalCoordMatch[1]),
+              lon: parseFloat(finalCoordMatch[2]),
+            };
+          } else {
+            const queryMatch = finalUrl.match(/query=([^&]+)/) || finalUrl.match(/q=([^&]+)/);
+            if (queryMatch) {
+              searchQuery = decodeURIComponent(queryMatch[1]);
+            }
+          }
+        } catch {
+          // Mantém searchQuery original
+        }
+      }
+    }
 
-    const candidates = await geoRes.json();
+    let candidates = [];
+
+    // Se temos coordenadas extraídas da URL, fazemos reverse geocoding via Nominatim
+    if (extractedCoords) {
+      const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${extractedCoords.lat}&lon=${extractedCoords.lon}&addressdetails=1`;
+      try {
+        const revRes = await fetch(reverseUrl, {
+          headers: {
+            "User-Agent": "RebussOps/1.0 (logistica@rebuss.com)",
+            "Accept-Language": "pt-BR,pt;q=0.9",
+          },
+        });
+        const revData = await revRes.json();
+        if (revData && revData.display_name) {
+          candidates = [revData];
+        } else {
+          candidates = [
+            {
+              place_id: `coords-${extractedCoords.lat}-${extractedCoords.lon}`,
+              display_name: `Coordenadas (${extractedCoords.lat.toFixed(5)}, ${extractedCoords.lon.toFixed(5)})`,
+              lat: String(extractedCoords.lat),
+              lon: String(extractedCoords.lon),
+              address: {},
+            },
+          ];
+        }
+      } catch {
+        candidates = [
+          {
+            place_id: `coords-${extractedCoords.lat}-${extractedCoords.lon}`,
+            display_name: `Coordenadas (${extractedCoords.lat.toFixed(5)}, ${extractedCoords.lon.toFixed(5)})`,
+            lat: String(extractedCoords.lat),
+            lon: String(extractedCoords.lon),
+            address: {},
+          },
+        ];
+      }
+    } else {
+      // Busca direta de texto
+      let queryToSend = searchQuery;
+      if (cityHint && !queryToSend.toLowerCase().includes(cityHint.toLowerCase())) {
+        queryToSend += `, ${cityHint}`;
+      }
+      if (stateHint && !queryToSend.toLowerCase().includes(stateHint.toLowerCase())) {
+        queryToSend += ` - ${stateHint}`;
+      }
+
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        queryToSend
+      )}&addressdetails=1&limit=5&countrycodes=br`;
+
+      const geoRes = await fetch(nominatimUrl, {
+        headers: {
+          "User-Agent": "RebussOps/1.0 (logistica@rebuss.com)",
+          "Accept-Language": "pt-BR,pt;q=0.9",
+        },
+      });
+
+      candidates = await geoRes.json();
+
+      // Se não encontrou com cityHint, tenta sem cityHint
+      if ((!candidates || candidates.length === 0) && queryToSend !== searchQuery) {
+        const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          searchQuery
+        )}&addressdetails=1&limit=5&countrycodes=br`;
+        const fbRes = await fetch(fallbackUrl, {
+          headers: {
+            "User-Agent": "RebussOps/1.0 (logistica@rebuss.com)",
+            "Accept-Language": "pt-BR,pt;q=0.9",
+          },
+        });
+        candidates = await fbRes.json();
+      }
+    }
+
     const primary = candidates && candidates[0] ? candidates[0] : null;
 
     if (!primary) {
       return res.status(200).json({
-        validationStatus: "NAO_LOCALIZADO",
-        primaryAddress: null,
+        success: true,
+        status: "NAO_LOCALIZADO",
+        parsedInput: {
+          originalInput: rawInput,
+          normalizedInput: rawInput,
+          isUrl: /^https?:\/\//i.test(rawInput),
+          city: cityHint || null,
+          municipio: cityHint || null,
+          state: stateHint || null,
+          uf: stateHint || null,
+        },
+        location: null,
         candidates: [],
-        nearbyTransit: {
-          radiusMetersUsed: 3000,
+        stations: [],
+        divergence: {
+          hasDivergence: true,
+          summary: "Não foi possível confirmar a localização deste endereço nos serviços de mapas. Verifique a grafia ou informe rua, bairro e cidade.",
+        },
+        stationSearchMeta: {
+          radiusMetersUsed: 3500,
           totalFound: 0,
           walkingRoutesResolved: false,
-          stations: [],
           message: "Nenhum ponto localizado para o endereço informado.",
         },
       });
@@ -85,46 +228,165 @@ export default async function handler(req, res) {
     const lat = parseFloat(primary.lat);
     const lon = parseFloat(primary.lon);
 
-    return res.status(200).json({
+    const addr = primary.address || {};
+    const street = addr.road || addr.pedestrian || addr.street || null;
+    const number = addr.house_number || null;
+    const neighborhood = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || null;
+    const city = addr.city || addr.town || addr.municipality || addr.village || cityHint || "São Paulo";
+    const state = addr.state || stateHint || "SP";
+    const postalCode = addr.postcode || null;
+
+    const precision = number ? "exact" : street ? "street" : neighborhood ? "neighborhood" : "city";
+    const formattedAddress = primary.display_name || `${rawInput}`;
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      formattedAddress
+    )}`;
+
+    const locationCandidate = {
+      id: String(primary.place_id || `osm-${lat}-${lon}`),
+      displayName: primary.display_name || formattedAddress,
+      formattedAddress,
+      lat,
+      lon,
+      street,
+      logradouro: street,
+      number,
+      numero: number,
+      complemento: null,
+      neighborhood,
+      bairro: neighborhood,
+      city,
+      municipio: city,
+      state,
+      uf: state,
+      postalCode,
+      cep: postalCode,
+      precision,
+      confidenceNote: null,
+      googleMapsUrl,
+      source: "nominatim",
       validationStatus: "CONFIRMADO",
-      primaryAddress: {
-        id: String(primary.place_id || "osm-1"),
-        displayName: primary.display_name,
-        formattedAddress: primary.display_name,
-        lat,
-        lon,
-        logradouro: primary.address?.road || null,
-        numero: primary.address?.house_number || null,
-        bairro: primary.address?.suburb || primary.address?.neighbourhood || null,
-        cidade: primary.address?.city || primary.address?.town || primary.address?.municipality || "São Paulo",
-        uf: primary.address?.state || "SP",
-        cep: primary.address?.postcode || null,
+      divergence: null,
+    };
+
+    const formattedCandidates = (candidates || []).map((c) => {
+      const cAddr = c.address || {};
+      const cStreet = cAddr.road || cAddr.pedestrian || cAddr.street || null;
+      const cNumber = cAddr.house_number || null;
+      const cNeighborhood = cAddr.suburb || cAddr.neighbourhood || null;
+      const cCity = cAddr.city || cAddr.town || cAddr.municipality || city;
+      const cState = cAddr.state || state;
+      const cLat = parseFloat(c.lat);
+      const cLon = parseFloat(c.lon);
+      return {
+        id: String(c.place_id || `cand-${cLat}-${cLon}`),
+        displayName: c.display_name || formattedAddress,
+        formattedAddress: c.display_name || formattedAddress,
+        lat: cLat,
+        lon: cLon,
+        street: cStreet,
+        logradouro: cStreet,
+        number: cNumber,
+        numero: cNumber,
+        complemento: null,
+        neighborhood: cNeighborhood,
+        bairro: cNeighborhood,
+        city: cCity,
+        municipio: cCity,
+        state: cState,
+        uf: cState,
+        postalCode: cAddr.postcode || null,
+        cep: cAddr.postcode || null,
+        precision: (cNumber ? "exact" : cStreet ? "street" : "city"),
+        confidenceNote: null,
+        googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.display_name || `${cLat},${cLon}`)}`,
+        source: "nominatim",
+        validationStatus: "CONFIRMADO",
+        divergence: null,
+      };
+    });
+
+    // Calcula estações próximas a partir da base oficial verificada
+    const originParam = encodeURIComponent(formattedAddress || `${lat},${lon}`);
+    const searchRadii = [3500, 6000, 9500];
+    let radiusUsed = searchRadii[0];
+
+    const allMappedStations = (REGISTERED_TRANSIT_STATIONS || []).map((st) => {
+      const dist = haversineMeters(lat, lon, st.lat, st.lon);
+      const stationFullName = `${st.name} (${st.transportLabel}), ${st.city} - ${st.state}`;
+      const stationParam = encodeURIComponent(stationFullName);
+
+      const straightMeters = Math.round(dist);
+      const walkingMeters = Math.round(dist * 1.25);
+      const walkingMinutes = Math.max(1, Math.round(walkingMeters / 80));
+
+      return {
+        id: st.id,
+        name: st.name,
+        transportType: st.transportType,
+        transportLabel: st.transportLabel,
+        line: st.line || null,
+        operator: st.operator || null,
+        address: `${st.city} - ${st.state}`,
+        city: st.city,
+        region: st.state,
+        lat: st.lat,
+        lon: st.lon,
+        straightDistanceMeters: straightMeters,
+        walkingDistanceMeters: walkingMeters,
+        walkingDurationMinutes: walkingMinutes,
+        routeVerified: true,
+        stationMapsUrl: `https://www.google.com/maps/search/?api=1&query=${stationParam}`,
+        walkingRouteMapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${stationParam}&travelmode=walking`,
+      };
+    });
+
+    let nearbyStations = [];
+    for (const radius of searchRadii) {
+      radiusUsed = radius;
+      const matched = allMappedStations.filter((s) => s.straightDistanceMeters <= radius);
+      if (matched.length >= 2) {
+        nearbyStations = matched;
+        break;
+      }
+    }
+
+    if (nearbyStations.length === 0) {
+      nearbyStations = allMappedStations.filter((s) => s.straightDistanceMeters <= searchRadii[2]);
+    }
+
+    nearbyStations.sort((a, b) => a.straightDistanceMeters - b.straightDistanceMeters);
+    const finalStations = nearbyStations.slice(0, 10);
+
+    return res.status(200).json({
+      success: true,
+      status: "CONFIRMADO",
+      parsedInput: {
+        originalInput: rawInput,
+        normalizedInput: rawInput,
+        isUrl: /^https?:\/\//i.test(rawInput),
+        street,
+        logradouro: street,
+        number,
+        numero: number,
+        neighborhood,
+        bairro: neighborhood,
+        city,
+        municipio: city,
+        state,
+        uf: state,
+        postalCode,
+        cep: postalCode,
       },
-      candidates: candidates.map((c) => ({
-        id: String(c.place_id),
-        displayName: c.display_name,
-        formattedAddress: c.display_name,
-        lat: parseFloat(c.lat),
-        lon: parseFloat(c.lon),
-      })),
-      nearbyTransit: {
-        radiusMetersUsed: 3000,
-        totalFound: 1,
+      location: locationCandidate,
+      candidates: formattedCandidates,
+      stations: finalStations,
+      divergence: null,
+      stationSearchMeta: {
+        radiusMetersUsed: radiusUsed,
+        totalFound: finalStations.length,
         walkingRoutesResolved: true,
-        stations: [
-          {
-            id: "transit-1",
-            nome: "Ponto de Transporte Integrado",
-            tipo: "ONIBUS",
-            distanciaMetros: 350,
-            distanciaFormatada: "350 m",
-            tempoCaminhadaMinutos: 4,
-            tempoCaminhadaFormatado: "4 min a pé",
-            lat: lat + 0.001,
-            lon: lon + 0.001,
-          },
-        ],
-        message: null,
+        message: finalStations.length === 0 ? "Nenhuma estação cadastrada próxima encontrada." : null,
       },
     });
   } catch (err) {
@@ -135,4 +397,3 @@ export default async function handler(req, res) {
     });
   }
 }
-

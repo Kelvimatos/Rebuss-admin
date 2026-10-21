@@ -8,6 +8,7 @@ import {
   GeocodedCandidate,
 } from "../services/scale-generator.service.js";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/Card.js";
+import { ErrorBoundary } from "../components/common/ErrorBoundary.js";
 import { Badge } from "../components/ui/Badge.js";
 import { Button } from "../components/ui/Button.js";
 import { Input } from "../components/ui/Input.js";
@@ -192,7 +193,7 @@ export const GeradorEscalasTool: React.FC = () => {
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const selectedStation: TransitStationResult | null =
-    locateResult?.stations.find((s) => s.id === selectedStationId) || null;
+    locateResult?.stations?.find((s) => s.id === selectedStationId) || null;
 
   // Save operator signature preference
   useEffect(() => {
@@ -499,9 +500,9 @@ export const GeradorEscalasTool: React.FC = () => {
           time: scaleTime,
           addressInput: addressInput.trim(),
           resolvedAddress:
-            locateResult?.location.formattedAddress || addressInput.trim(),
+            locateResult?.location?.formattedAddress || addressInput.trim(),
           cityState:
-            locateResult?.location.city && locateResult?.location.state
+            locateResult?.location?.city && locateResult?.location?.state
               ? `${locateResult.location.city}/${locateResult.location.state}`
               : "",
           stationName: selectedStation?.name || null,
@@ -604,7 +605,8 @@ export const GeradorEscalasTool: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <ErrorBoundary fallbackTitle="Ocorreu uma instabilidade no Gerador de Escalas">
+      <div className="space-y-6">
       {/* Editorial Masthead */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-border pb-5">
         <div className="space-y-1">
@@ -818,15 +820,15 @@ export const GeradorEscalasTool: React.FC = () => {
                             Endereço Solicitado
                           </span>
                           <p className="text-foreground font-medium">
-                            {locateResult.parsedInput.originalInput}
+                            {locateResult.parsedInput?.originalInput || addressInput}
                           </p>
                           <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2">
                             <span>
                               Município:{" "}
                               <strong className="text-foreground">
                                 {locateResult.divergence?.requestedCity ||
-                                  locateResult.parsedInput.municipio ||
-                                  locateResult.parsedInput.city ||
+                                  locateResult.parsedInput?.municipio ||
+                                  locateResult.parsedInput?.city ||
                                   "Não detectado"}
                               </strong>
                             </span>
@@ -834,12 +836,12 @@ export const GeradorEscalasTool: React.FC = () => {
                               UF:{" "}
                               <strong className="text-foreground">
                                 {locateResult.divergence?.requestedState ||
-                                  locateResult.parsedInput.uf ||
-                                  locateResult.parsedInput.state ||
+                                  locateResult.parsedInput?.uf ||
+                                  locateResult.parsedInput?.state ||
                                   "-"}
                               </strong>
                             </span>
-                            {locateResult.parsedInput.numero && (
+                            {locateResult.parsedInput?.numero && (
                               <span>
                                 Nº:{" "}
                                 <strong className="text-foreground">
@@ -855,15 +857,15 @@ export const GeradorEscalasTool: React.FC = () => {
                             Localização Encontrada
                           </span>
                           <p className="text-foreground font-medium">
-                            {locateResult.location.formattedAddress}
+                            {locateResult.location?.formattedAddress || addressInput}
                           </p>
                           <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2">
                             <span>
                               Município:{" "}
                               <strong className="text-amber-300">
                                 {locateResult.divergence?.foundCity ||
-                                  locateResult.location.municipio ||
-                                  locateResult.location.city ||
+                                  locateResult.location?.municipio ||
+                                  locateResult.location?.city ||
                                   "Não identificado"}
                               </strong>
                             </span>
@@ -871,12 +873,12 @@ export const GeradorEscalasTool: React.FC = () => {
                               UF:{" "}
                               <strong className="text-amber-300">
                                 {locateResult.divergence?.foundState ||
-                                  locateResult.location.uf ||
-                                  locateResult.location.state ||
+                                  locateResult.location?.uf ||
+                                  locateResult.location?.state ||
                                   "-"}
                               </strong>
                             </span>
-                            {locateResult.location.numero && (
+                            {locateResult.location?.numero && (
                               <span>
                                 Nº:{" "}
                                 <strong className="text-foreground">
@@ -949,126 +951,128 @@ export const GeradorEscalasTool: React.FC = () => {
                             </Badge>
                             <Badge
                               variant={
-                                locateResult.location.precision === "exact" ||
-                                locateResult.location.precision === "street"
+                                locateResult.location?.precision === "exact" ||
+                                locateResult.location?.precision === "street"
                                   ? "success"
                                   : "warning"
                               }
                               className="text-[10px] ml-1"
                             >
-                              {locateResult.location.precision === "exact"
+                              {locateResult.location?.precision === "exact"
                                 ? "Ponto / Logradouro Exato"
-                                : locateResult.location.precision === "street"
+                                : locateResult.location?.precision === "street"
                                 ? "Logradouro Confirmado"
                                 : "Referência de Setor / Bairro"}
                             </Badge>
                           </div>
                           <p className="text-xs font-medium text-foreground mt-1">
-                            {locateResult.location.formattedAddress}
+                            {locateResult.location?.formattedAddress || addressInput}
                           </p>
                         </div>
 
-                        <a
-                          href={locateResult.location.googleMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline shrink-0"
-                        >
-                          <span>Conferir destino no Maps</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                        {locateResult.location?.googleMapsUrl && (
+                          <a
+                            href={locateResult.location.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline shrink-0"
+                          >
+                            <span>Conferir destino no Maps</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
                       </div>
 
                       {/* Chips dos componentes separados */}
                       <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
-                        {(locateResult.location.logradouro ||
-                          locateResult.location.street ||
-                          locateResult.parsedInput.logradouro) && (
+                        {(locateResult.location?.logradouro ||
+                          locateResult.location?.street ||
+                          locateResult.parsedInput?.logradouro) && (
                           <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5">
                             Logradouro:{" "}
                             <strong>
-                              {locateResult.location.logradouro ||
-                                locateResult.location.street ||
-                                locateResult.parsedInput.logradouro}
+                              {locateResult.location?.logradouro ||
+                                locateResult.location?.street ||
+                                locateResult.parsedInput?.logradouro}
                             </strong>
                           </span>
                         )}
-                        {(locateResult.location.numero ||
-                          locateResult.location.number ||
-                          locateResult.parsedInput.numero) && (
+                        {(locateResult.location?.numero ||
+                          locateResult.location?.number ||
+                          locateResult.parsedInput?.numero) && (
                           <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5">
                             Nº:{" "}
                             <strong>
-                              {locateResult.location.numero ||
-                                locateResult.location.number ||
-                                locateResult.parsedInput.numero}
+                              {locateResult.location?.numero ||
+                                locateResult.location?.number ||
+                                locateResult.parsedInput?.numero}
                             </strong>
                           </span>
                         )}
-                        {(locateResult.location.bairro ||
-                          locateResult.location.neighborhood ||
-                          locateResult.parsedInput.bairro) && (
+                        {(locateResult.location?.bairro ||
+                          locateResult.location?.neighborhood ||
+                          locateResult.parsedInput?.bairro) && (
                           <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5">
                             Bairro:{" "}
                             <strong>
-                              {locateResult.location.bairro ||
-                                locateResult.location.neighborhood ||
-                                locateResult.parsedInput.bairro}
+                              {locateResult.location?.bairro ||
+                                locateResult.location?.neighborhood ||
+                                locateResult.parsedInput?.bairro}
                             </strong>
                           </span>
                         )}
-                        {(locateResult.location.municipio ||
-                          locateResult.location.city ||
-                          locateResult.parsedInput.municipio) && (
+                        {(locateResult.location?.municipio ||
+                          locateResult.location?.city ||
+                          locateResult.parsedInput?.municipio) && (
                           <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5">
                             Município:{" "}
                             <strong>
-                              {locateResult.location.municipio ||
-                                locateResult.location.city ||
-                                locateResult.parsedInput.municipio}
-                              {(locateResult.location.uf ||
-                                locateResult.location.state ||
-                                locateResult.parsedInput.uf)
+                              {locateResult.location?.municipio ||
+                                locateResult.location?.city ||
+                                locateResult.parsedInput?.municipio}
+                              {(locateResult.location?.uf ||
+                                locateResult.location?.state ||
+                                locateResult.parsedInput?.uf)
                                 ? ` - ${
-                                    locateResult.location.uf ||
-                                    locateResult.location.state ||
-                                    locateResult.parsedInput.uf
+                                    locateResult.location?.uf ||
+                                    locateResult.location?.state ||
+                                    locateResult.parsedInput?.uf
                                   }`
                                 : ""}
                             </strong>
                           </span>
                         )}
-                        {(locateResult.location.cep ||
-                          locateResult.location.postalCode ||
-                          locateResult.parsedInput.cep) && (
+                        {(locateResult.location?.cep ||
+                          locateResult.location?.postalCode ||
+                          locateResult.parsedInput?.cep) && (
                           <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5">
                             CEP:{" "}
                             <strong>
-                              {locateResult.location.cep ||
-                                locateResult.location.postalCode ||
-                                locateResult.parsedInput.cep}
+                              {locateResult.location?.cep ||
+                                locateResult.location?.postalCode ||
+                                locateResult.parsedInput?.cep}
                             </strong>
                           </span>
                         )}
                         <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5 font-mono text-[10px]">
-                          {locateResult.location.lat.toFixed(5)},{" "}
-                          {locateResult.location.lon.toFixed(5)}
+                          {locateResult.location?.lat != null ? locateResult.location.lat.toFixed(5) : "—"},{" "}
+                          {locateResult.location?.lon != null ? locateResult.location.lon.toFixed(5) : "—"}
                         </span>
-                        {locateResult.location.source && (
+                        {locateResult.location?.source && (
                           <span className="rounded bg-background/80 border border-border/60 px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
                             Fonte: {locateResult.location.source}
                           </span>
                         )}
                       </div>
 
-                      {locateResult.location.confidenceNote && (
+                      {locateResult.location?.confidenceNote && (
                         <p className="text-[11px] text-amber-400/90">
                           Nota: {locateResult.location.confidenceNote}
                         </p>
                       )}
 
                       {/* Seletor de alternativas */}
-                      {locateResult.candidates.length > 1 && (
+                      {locateResult.candidates && locateResult.candidates.length > 1 && (
                         <div className="pt-2 border-t border-border/50 space-y-1.5">
                           <span className="text-[11px] text-muted-foreground block">
                             Outras correspondências encontradas (clique caso queira ajustar o ponto exato):
@@ -1076,6 +1080,7 @@ export const GeradorEscalasTool: React.FC = () => {
                           <div className="flex flex-wrap gap-1.5">
                             {locateResult.candidates.map((cand) => {
                               const isCurrent =
+                                locateResult.location &&
                                 Math.abs(cand.lat - locateResult.location.lat) < 0.0001 &&
                                 Math.abs(cand.lon - locateResult.location.lon) < 0.0001;
                               return (
@@ -1110,10 +1115,10 @@ export const GeradorEscalasTool: React.FC = () => {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                            Estações e Terminais Próximos ({locateResult.stations.length})
+                            Estações e Terminais Próximos ({locateResult.stations?.length ?? 0})
                           </h3>
                           <span className="text-[11px] text-muted-foreground">
-                            Raio pesquisado: {(locateResult.stationSearchMeta.radiusMetersUsed / 1000).toFixed(0)} km
+                            Raio pesquisado: {(((locateResult.stationSearchMeta?.radiusMetersUsed ?? 3500)) / 1000).toFixed(0)} km
                           </span>
                         </div>
 
@@ -1130,19 +1135,19 @@ export const GeradorEscalasTool: React.FC = () => {
                         </label>
                       </div>
 
-                      {locateResult.stationSearchMeta.message && (
+                      {locateResult.stationSearchMeta?.message && (
                         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
                           {locateResult.stationSearchMeta.message}
                         </div>
                       )}
 
-                      {locateResult.stations.length === 0 ? (
+                      {(locateResult.stations?.length ?? 0) === 0 ? (
                         <div className="rounded-lg border border-border/60 bg-muted/15 p-4 text-center text-xs text-muted-foreground">
                           Nenhuma estação de metrô, trem ou terminal de ônibus foi encontrado próximo a este endereço. A mensagem será gerada apenas com o endereço e link direto do local.
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {locateResult.stations.map((st, idx) => {
+                          {(locateResult.stations || []).map((st, idx) => {
                             const isSelected = st.id === selectedStationId;
                             return (
                               <div
@@ -1612,5 +1617,6 @@ export const GeradorEscalasTool: React.FC = () => {
         </div>
       </div>
     </div>
-  );
+  </ErrorBoundary>
+);
 };

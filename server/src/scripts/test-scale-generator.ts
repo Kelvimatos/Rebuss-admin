@@ -483,6 +483,7 @@ async function runTests() {
   console.log("==========================================================");
   console.log("  TODOS OS CENÁRIOS (A, B, C, D, E, F, G, H, I) APROVADOS!");
   console.log("==========================================================");
+  process.exit(0);
 }
 
 runTests().catch(async (err) => {

@@ -4,6 +4,7 @@ import { ThemeProvider } from "./context/ThemeContext.js";
 import { ToastProvider } from "./context/ToastContext.js";
 import { AuthProvider } from "./context/AuthContext.js";
 import { AppRoutes } from "./routes/AppRoutes.js";
+import { ErrorBoundary } from "./components/common/ErrorBoundary.js";
 
 export function App() {
   useEffect(() => {
@@ -15,7 +16,9 @@ export function App() {
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>
