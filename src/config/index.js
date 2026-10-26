@@ -70,9 +70,9 @@ module.exports = {
       "--disable-dev-shm-usage",
       "--disable-gpu",
       "--no-first-run",
-      "--no-zygote",
-      "--single-process",
       "--disable-extensions",
+      "--disable-default-apps",
+      "--no-default-browser-check",
     ],
   },
 

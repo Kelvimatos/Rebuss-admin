@@ -26,6 +26,7 @@
     "test:routine": "tsx test/routine-assistant.test.ts",
     "bot": "node src/index.js",
     "bot:dev": "nodemon src/index.js",
+    "bot:clean": "node -e \"const fs=require('fs'); fs.rmSync('./.wwebjs_auth', {recursive:true, force:true}); fs.rmSync('./.wwebjs_cache', {recursive:true, force:true}); console.log('Sessão limpa com sucesso!');\"",
     "test:bot": "node src/tests/bot.test.js"
   },
   "keywords": [
