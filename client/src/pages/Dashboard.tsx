@@ -229,7 +229,7 @@ export const Dashboard: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Composição padronizada de comunicados de escala a partir de endereços do Google Maps. Geocodifica o destino, localiza estações de metrô, trem e terminais de ônibus próximos e calcula a distância real de caminhada a pé.
+                    Composição padronizada de comunicados de escala a partir de endereços do Google Maps, com identificação automática da estação de transporte mais próxima.
                   </p>
 
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/60 text-[11px]">
@@ -242,8 +242,8 @@ export const Dashboard: React.FC = () => {
                       <span className="font-medium text-foreground">Metrô, Trem e Ônibus</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block">Trajeto a Pé</span>
-                      <span className="font-mono font-medium text-foreground">OSRM / Maps</span>
+                      <span className="text-muted-foreground block">Estação próxima</span>
+                      <span className="font-medium text-foreground">Incluída na mensagem</span>
                     </div>
                   </div>
                 </div>

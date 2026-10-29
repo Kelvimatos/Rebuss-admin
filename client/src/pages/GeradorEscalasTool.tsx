@@ -20,18 +20,14 @@ import {
   Trash2,
   Train,
   Bus,
-  Navigation,
   ExternalLink,
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
   RefreshCw,
-  Clock,
   X,
   History,
   RotateCcw,
-  Footprints,
-  Compass,
 } from "lucide-react";
 
 interface ScaleHistoryItem {
@@ -113,30 +109,8 @@ function formatDateBr(dateStr: string): string {
 }
 
 function buildStationLineForMessage(station: TransitStationResult): string {
-  const icon =
-    station.transportType === "TERMINAL_ONIBUS"
-      ? "🚌"
-      : station.transportType === "METRO"
-      ? "🚇"
-      : "🚆";
-
   const lineInfo = station.line ? ` (Linha ${station.line})` : "";
-
-  let distanceInfo = "";
-  if (station.routeVerified && station.walkingDistanceMeters !== null) {
-    const walkDist = formatDistance(station.walkingDistanceMeters);
-    const walkTime =
-      station.walkingDurationMinutes !== null
-        ? `, ~${station.walkingDurationMinutes} min a pé`
-        : "";
-    distanceInfo = ` — ${walkDist} por trajeto a pé${walkTime}`;
-  } else {
-    distanceInfo = ` — aprox. ${formatDistance(
-      station.straightDistanceMeters
-    )} em linha reta`;
-  }
-
-  return `${icon} *${station.transportLabel} de referência:* ${station.name}${lineInfo}${distanceInfo}`;
+  return `🚉 *Estação mais próxima:* ${station.name}${lineInfo}`;
 }
 
 export const GeradorEscalasTool: React.FC = () => {
@@ -157,7 +131,6 @@ export const GeradorEscalasTool: React.FC = () => {
   const [scaleDate, setScaleDate] = useState(todayIso);
   const [scaleTime, setScaleTime] = useState("08:00");
   const [meetingPoint, setMeetingPoint] = useState("");
-  const [customMapsUrl, setCustomMapsUrl] = useState("");
   const [notes, setNotes] = useState("");
 
   // Step 2 — Address & Geolocation State
@@ -166,15 +139,11 @@ export const GeradorEscalasTool: React.FC = () => {
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
   const [locateResult, setLocateResult] = useState<LocateResponse | null>(null);
-  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
-  const [includeStationInMsg, setIncludeStationInMsg] = useState(true);
-  const [includeRouteLinkInMsg, setIncludeRouteLinkInMsg] = useState(true);
 
   // Step 3 — Message Preview & Manual Edit Preservation
   const [messageText, setMessageText] = useState("");
   const [isManuallyEdited, setIsManuallyEdited] = useState(false);
   const [copiedPreview, setCopiedPreview] = useState(false);
-  const lastStationLineRef = useRef<string | null>(null);
 
   // History State
   const [history, setHistory] = useState<ScaleHistoryItem[]>(() => {
@@ -192,8 +161,7 @@ export const GeradorEscalasTool: React.FC = () => {
   const lastSearchedKeyRef = useRef<string>("");
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const selectedStation: TransitStationResult | null =
-    locateResult?.stations?.find((s) => s.id === selectedStationId) || null;
+  const selectedStation: TransitStationResult | null = locateResult?.stations?.[0] || null;
 
   // Save operator signature preference
   useEffect(() => {
@@ -269,28 +237,12 @@ export const GeradorEscalasTool: React.FC = () => {
       lines.push(`🤝 *Ponto de encontro:* ${meetingPoint.trim()}`);
     }
 
-    // Apenas inclui estação de transporte e rota de caminhada se o endereço estiver estritamente CONFIRMADO
-    if (isConfirmed && includeStationInMsg && selectedStation) {
+    // Inclui somente o nome da estação mais próxima, sem calcular ou anexar uma rota.
+    if (isConfirmed && selectedStation) {
       const stLine = buildStationLineForMessage(selectedStation);
-      lastStationLineRef.current = stLine;
       lines.push(stLine);
-    } else {
-      lastStationLineRef.current = null;
     }
 
-    if (includeRouteLinkInMsg) {
-      const routeLink =
-        customMapsUrl.trim() ||
-        (isConfirmed && includeStationInMsg && selectedStation
-          ? selectedStation.walkingRouteMapsUrl
-          : isConfirmed && locateResult?.location?.googleMapsUrl
-          ? locateResult.location.googleMapsUrl
-          : "");
-
-      if (routeLink) {
-        lines.push(`🗺️ *Rota no Google Maps:* ${routeLink}`);
-      }
-    }
 
     if (notes.trim()) {
       lines.push("");
@@ -313,10 +265,7 @@ export const GeradorEscalasTool: React.FC = () => {
     addressInput,
     locateResult,
     meetingPoint,
-    includeStationInMsg,
     selectedStation,
-    includeRouteLinkInMsg,
-    customMapsUrl,
     notes,
     operatorName,
   ]);
@@ -327,30 +276,6 @@ export const GeradorEscalasTool: React.FC = () => {
       setMessageText(buildAutomaticMessage());
     }
   }, [buildAutomaticMessage, isManuallyEdited]);
-
-  // When station selection changes while manually edited, update the station line in-place
-  const handleSelectStation = (station: TransitStationResult) => {
-    setSelectedStationId(station.id);
-
-    if (isManuallyEdited && includeStationInMsg) {
-      const newStationLine = buildStationLineForMessage(station);
-      const prevLine = lastStationLineRef.current;
-
-      if (prevLine && messageText.includes(prevLine)) {
-        let updated = messageText.replace(prevLine, newStationLine);
-        if (!customMapsUrl.trim() && includeRouteLinkInMsg) {
-          updated = updated.replace(
-            /🗺️ \*Rota no Google Maps:\* https?:\/\/[^\s]+/,
-            `🗺️ *Rota no Google Maps:* ${station.walkingRouteMapsUrl}`
-          );
-        }
-        lastStationLineRef.current = newStationLine;
-        setMessageText(updated);
-      } else {
-        lastStationLineRef.current = newStationLine;
-      }
-    }
-  };
 
   // Perform location lookup
   const executeLocate = useCallback(
@@ -366,7 +291,6 @@ export const GeradorEscalasTool: React.FC = () => {
       if (!trimmed) {
         setLocateError("Digite ou cole um endereço do Google Maps para localizar.");
         setLocateResult(null);
-        setSelectedStationId(null);
         return;
       }
 
@@ -375,7 +299,6 @@ export const GeradorEscalasTool: React.FC = () => {
           "Endereço muito curto. Informe logradouro, bairro ou cidade (ex: Av. Paulista, Bela Vista, São Paulo - SP)."
         );
         setLocateResult(null);
-        setSelectedStationId(null);
         return;
       }
 
@@ -415,17 +338,11 @@ export const GeradorEscalasTool: React.FC = () => {
         lastSearchedKeyRef.current = requestKey;
         setLocateResult(res);
 
-        if (res.stations && res.stations.length > 0) {
-          setSelectedStationId(res.stations[0].id);
-        } else {
-          setSelectedStationId(null);
-        }
       } catch (err: any) {
         if (err?.name === "AbortError") {
           return;
         }
         setLocateResult(null);
-        setSelectedStationId(null);
         setLocateError(
           err.message ||
             "Não foi possível localizar o endereço informado. Verifique os dados e tente novamente."
@@ -463,7 +380,6 @@ export const GeradorEscalasTool: React.FC = () => {
     setAddressInput("");
     setLocateResult(null);
     setLocateError(null);
-    setSelectedStationId(null);
   };
 
   const handleCopyMessage = async () => {
@@ -506,14 +422,7 @@ export const GeradorEscalasTool: React.FC = () => {
               ? `${locateResult.location.city}/${locateResult.location.state}`
               : "",
           stationName: selectedStation?.name || null,
-          stationSummary: selectedStation
-            ? `${selectedStation.transportLabel}: ${selectedStation.name} (${
-                selectedStation.routeVerified &&
-                selectedStation.walkingDistanceMeters !== null
-                  ? `${formatDistance(selectedStation.walkingDistanceMeters)} a pé`
-                  : `${formatDistance(selectedStation.straightDistanceMeters)} linha reta`
-              })`
-            : null,
+          stationSummary: selectedStation ? buildStationLineForMessage(selectedStation) : null,
           message: trimmedMsg,
           createdAt: new Date().toISOString(),
         };
@@ -618,11 +527,11 @@ export const GeradorEscalasTool: React.FC = () => {
               Gerador de Escalas
             </h1>
             <Badge variant="secondary" className="font-mono text-[10px]">
-              GEOCODIFICAÇÃO & ROTAS A PÉ
+              LOCALIZAÇÃO & ESTAÇÃO MAIS PRÓXIMA
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl">
-            Informe o endereço completo do Google Maps para localizar estações de metrô, trem e terminais próximos e compor o comunicado da operação.
+            Informe o endereço para identificar a estação mais próxima e incluí-la automaticamente na mensagem da escala.
           </p>
         </div>
 
@@ -714,7 +623,6 @@ export const GeradorEscalasTool: React.FC = () => {
                         // Invalida resultados e estações anteriores quando o endereço é alterado
                         if (locateResult) {
                           setLocateResult(null);
-                          setSelectedStationId(null);
                           lastSearchedKeyRef.current = "";
                         }
                       }}
@@ -758,7 +666,7 @@ export const GeradorEscalasTool: React.FC = () => {
                   <div className="flex items-center gap-2 text-xs text-primary font-medium">
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                     <span>
-                      Geocodificando endereço e pesquisando estações/terminais próximos e rotas a pé...
+                      Localizando o endereço e identificando a estação mais próxima...
                     </span>
                   </div>
                   <div className="h-2 w-2/3 rounded bg-muted animate-pulse" />
@@ -891,7 +799,7 @@ export const GeradorEscalasTool: React.FC = () => {
                       </div>
 
                       <div className="rounded border border-amber-500/20 bg-background/50 p-2 text-[11px] text-muted-foreground">
-                        🛡️ <strong>Segurança Operacional:</strong> A pesquisa de estações de transporte e o trajeto a pé foram pausados para evitar enviar colaboradores para municípios incorretos. A mensagem gerada utilizará o endereço original digitado.
+                        🛡️ <strong>Segurança Operacional:</strong> A busca da estação mais próxima foi pausada até que o endereço divergente seja confirmado. A mensagem utilizará o endereço original digitado.
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1109,31 +1017,12 @@ export const GeradorEscalasTool: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Seção de Estações e Terminais Próximos (Apenas visível quando CONFIRMADO) */}
+                  {/* Identifica a estação mais próxima sem calcular rotas. */}
                   {locateResult.status === "CONFIRMADO" && (
                     <div className="space-y-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                            Estações e Terminais Próximos ({locateResult.stations?.length ?? 0})
-                          </h3>
-                          <span className="text-[11px] text-muted-foreground">
-                            Raio pesquisado: {(((locateResult.stationSearchMeta?.radiusMetersUsed ?? 3500)) / 1000).toFixed(0)} km
-                          </span>
-                        </div>
-
-                        <label className="inline-flex items-center gap-2 text-xs cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={includeStationInMsg}
-                            onChange={(e) => setIncludeStationInMsg(e.target.checked)}
-                            className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
-                          />
-                          <span className="text-muted-foreground">
-                            Incluir estação selecionada na mensagem
-                          </span>
-                        </label>
-                      </div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                        Estação mais próxima
+                      </h3>
 
                       {locateResult.stationSearchMeta?.message && (
                         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
@@ -1143,39 +1032,18 @@ export const GeradorEscalasTool: React.FC = () => {
 
                       {(locateResult.stations?.length ?? 0) === 0 ? (
                         <div className="rounded-lg border border-border/60 bg-muted/15 p-4 text-center text-xs text-muted-foreground">
-                          Nenhuma estação de metrô, trem ou terminal de ônibus foi encontrado próximo a este endereço. A mensagem será gerada apenas com o endereço e link direto do local.
+                          Nenhuma estação de metrô, trem ou terminal de ônibus foi encontrada próxima a este endereço. A mensagem será gerada apenas com o endereço.
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {(locateResult.stations || []).map((st, idx) => {
-                            const isSelected = st.id === selectedStationId;
-                            return (
+                          {(locateResult.stations || []).slice(0, 1).map((st) => (
                               <div
                                 key={st.id}
-                                onClick={() => handleSelectStation(st)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    handleSelectStation(st);
-                                  }
-                                }}
-                                className={`rounded-lg border p-3 transition-colors cursor-pointer ${
-                                  isSelected
-                                    ? "border-primary bg-primary/10"
-                                    : "border-border/70 bg-card/60 hover:border-border hover:bg-muted/30"
-                                }`}
+                                className="rounded-lg border border-primary/40 bg-primary/10 p-3"
                               >
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                   <div className="flex items-start gap-2.5">
-                                    <div
-                                      className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
-                                        isSelected
-                                          ? "border-primary bg-primary text-primary-foreground"
-                                          : "border-border bg-muted/50 text-muted-foreground"
-                                      }`}
-                                    >
+                                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground">
                                       {st.transportType === "TERMINAL_ONIBUS" ? (
                                         <Bus className="h-3.5 w-3.5" />
                                       ) : (
@@ -1189,7 +1057,7 @@ export const GeradorEscalasTool: React.FC = () => {
                                           {st.name}
                                         </span>
                                         <Badge
-                                          variant={isSelected ? "default" : "secondary"}
+                                          variant="default"
                                           className="text-[10px]"
                                         >
                                           {st.transportLabel}
@@ -1199,55 +1067,11 @@ export const GeradorEscalasTool: React.FC = () => {
                                             Linha {st.line}
                                           </Badge>
                                         )}
-                                        {idx === 0 && (
-                                          <span className="text-[10px] font-medium text-emerald-400">
-                                            • Mais próxima
-                                          </span>
-                                        )}
                                       </div>
 
-                                      {/* Clear differentiation between Walking Route vs Straight-Line Distance */}
-                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                                        <span className="inline-flex items-center gap-1">
-                                          <Compass className="h-3 w-3 text-muted-foreground" />
-                                          <span>
-                                            Linha reta:{" "}
-                                            <strong className="text-foreground/90">
-                                              {formatDistance(st.straightDistanceMeters)}
-                                            </strong>
-                                          </span>
-                                        </span>
-
-                                        {st.routeVerified &&
-                                        st.walkingDistanceMeters !== null ? (
-                                          <>
-                                            <span className="inline-flex items-center gap-1 text-emerald-400">
-                                              <Footprints className="h-3 w-3" />
-                                              <span>
-                                                Trajeto a pé:{" "}
-                                                <strong>
-                                                  {formatDistance(st.walkingDistanceMeters)}
-                                                </strong>
-                                              </span>
-                                            </span>
-                                            {st.walkingDurationMinutes !== null && (
-                                              <span className="inline-flex items-center gap-1 text-emerald-400">
-                                                <Clock className="h-3 w-3" />
-                                                <span>
-                                                  Caminhada:{" "}
-                                                  <strong>
-                                                    ~{st.walkingDurationMinutes} min
-                                                  </strong>
-                                                </span>
-                                              </span>
-                                            )}
-                                          </>
-                                        ) : (
-                                          <span className="text-[10px] text-muted-foreground/75 italic">
-                                            (Trajeto a pé não verificado)
-                                          </span>
-                                        )}
-                                      </div>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Aproximadamente {formatDistance(st.straightDistanceMeters)} em linha reta
+                                      </p>
 
                                       {(st.address || st.operator) && (
                                         <p className="text-[11px] text-muted-foreground/80">
@@ -1259,7 +1083,7 @@ export const GeradorEscalasTool: React.FC = () => {
                                     </div>
                                   </div>
 
-                                  {/* Direct Google Maps Actions */}
+                                  {/* Abre somente a localização da estação, sem criar uma rota. */}
                                   <div
                                     className="flex items-center gap-1.5 self-end sm:self-center shrink-0"
                                     onClick={(e) => e.stopPropagation()}
@@ -1275,21 +1099,10 @@ export const GeradorEscalasTool: React.FC = () => {
                                       <span>Local</span>
                                     </a>
 
-                                    <a
-                                      href={st.walkingRouteMapsUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      title="Abrir rota a pé da estação até o destino no Google Maps"
-                                      className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/20 transition-colors"
-                                    >
-                                      <Navigation className="h-3 w-3" />
-                                      <span>Rota a pé</span>
-                                    </a>
                                   </div>
                                 </div>
                               </div>
-                            );
-                          })}
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1355,33 +1168,6 @@ export const GeradorEscalasTool: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="custom-maps-url"
-                    className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
-                  >
-                    Link de Rota / Chegada Personalizado (Opcional)
-                  </label>
-                  <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={includeRouteLinkInMsg}
-                      onChange={(e) => setIncludeRouteLinkInMsg(e.target.checked)}
-                      className="rounded border-border text-primary h-3.5 w-3.5"
-                    />
-                    <span>Incluir link do Maps na mensagem</span>
-                  </label>
-                </div>
-                <input
-                  id="custom-maps-url"
-                  type="url"
-                  value={customMapsUrl}
-                  onChange={(e) => setCustomMapsUrl(e.target.value)}
-                  placeholder="Se deixar em branco, usará automaticamente o link da rota verificada do Google Maps"
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/30"
-                />
-              </div>
 
               <div className="space-y-2">
                 <label

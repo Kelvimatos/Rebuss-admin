@@ -712,12 +712,9 @@ export class ScaleGeneratorService {
     };
 
     if (validationStatus === "CONFIRMADO") {
-      const confirmedFormattedAddress =
-        primaryCandidate.formattedAddress || parsed.originalInput;
       const transitData = await this.findNearbyTransit(
         primaryCandidate.lat,
-        primaryCandidate.lon,
-        confirmedFormattedAddress
+        primaryCandidate.lon
       );
       transitStations = transitData.stations;
       transitMeta = {
@@ -1462,12 +1459,11 @@ export class ScaleGeneratorService {
 
   /**
    * 4. NEARBY PUBLIC TRANSIT STATIONS
-   * Searches the 5 closest Metro, Train, Bus Terminals from verified coordinates
+   * Finds nearby transit and returns the closest station by straight-line distance.
    */
   async findNearbyTransit(
     destLat: number,
-    destLon: number,
-    destAddress?: string
+    destLon: number
   ): Promise<{
     stations: TransitStationResult[];
     radiusMetersUsed: number;
@@ -1476,11 +1472,6 @@ export class ScaleGeneratorService {
   }> {
     const searchRadii = [3500, 6000, 9500];
     let radiusUsed = searchRadii[0];
-
-    const originParam =
-      destAddress && destAddress.trim().length > 3
-        ? encodeURIComponent(destAddress.trim())
-        : `${destLat},${destLon}`;
 
     // 1. Initial list from High-Speed Verified Brazilian Registry
     const allRegistered: TransitStationResult[] = REGISTERED_TRANSIT_STATIONS.map((st) => {
@@ -1505,7 +1496,7 @@ export class ScaleGeneratorService {
         walkingDurationMinutes: null,
         routeVerified: false,
         stationMapsUrl: `https://www.google.com/maps/search/?api=1&query=${stationParam}`,
-        walkingRouteMapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${stationParam}&travelmode=walking`,
+        walkingRouteMapsUrl: "",
       };
     });
 
@@ -1567,7 +1558,7 @@ export class ScaleGeneratorService {
             walkingDurationMinutes: null,
             routeVerified: false,
             stationMapsUrl: `https://www.google.com/maps/search/?api=1&query=${stationParam}`,
-            walkingRouteMapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${stationParam}&travelmode=walking`,
+            walkingRouteMapsUrl: "",
           });
         }
       }
@@ -1611,48 +1602,15 @@ export class ScaleGeneratorService {
       }
     }
 
-    // Top 5 candidates (requirement 5)
-    const topCandidates = deduplicated.slice(0, 5);
-    let anyRouteResolved = false;
+    // A lista já está ordenada por distância em linha reta; a mensagem usa apenas a primeira.
+    const topCandidates = deduplicated.slice(0, 1);
 
-    await Promise.all(
-      topCandidates.map(async (station) => {
-        if (station.straightDistanceMeters <= 10000) {
-          const walkData = await this.calculateWalkingRoute(
-            station.lat,
-            station.lon,
-            destLat,
-            destLon
-          );
-          if (walkData) {
-            station.walkingDistanceMeters = walkData.distanceMeters;
-            station.walkingDurationMinutes = walkData.durationMinutes;
-            station.routeVerified = true;
-            anyRouteResolved = true;
-          }
-        }
-      })
-    );
-
-    // Sort by walking distance when verified, otherwise straight-line
-    topCandidates.sort((a, b) => {
-      const effDistA = a.walkingDistanceMeters ?? a.straightDistanceMeters * 1.3;
-      const effDistB = b.walkingDistanceMeters ?? b.straightDistanceMeters * 1.3;
-      return effDistA - effDistB;
-    });
-
-    let infoMessage: string | null = null;
-    if (topCandidates.length > 0 && topCandidates.length < 3) {
-      infoMessage = `Foram encontrados ${topCandidates.length} ponto(s) de transporte público confiáveis em um raio de ${(
-        radiusUsed / 1000
-      ).toFixed(0)} km.`;
-    }
 
     return {
       stations: topCandidates,
       radiusMetersUsed: radiusUsed,
-      walkingRoutesResolved: anyRouteResolved,
-      message: infoMessage,
+      walkingRoutesResolved: false,
+      message: null,
     };
   }
 
@@ -1756,39 +1714,6 @@ out center tags;
     return [];
   }
 
-  private async calculateWalkingRoute(
-    originLat: number,
-    originLon: number,
-    destLat: number,
-    destLon: number
-  ): Promise<{ distanceMeters: number; durationMinutes: number } | null> {
-    const urls = [
-      `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${originLon},${originLat};${destLon},${destLat}?overview=false`,
-      `https://router.project-osrm.org/route/v1/foot/${originLon},${originLat};${destLon},${destLat}?overview=false`,
-    ];
-
-    for (const url of urls) {
-      try {
-        const res = await fetchWithTimeout(
-          url,
-          { headers: { "User-Agent": "RebussOps/2.0" } },
-          4500
-        );
-        if (!res.ok) continue;
-
-        const data = (await res.json()) as any;
-        if (data.code === "Ok" && data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const distanceMeters = Math.round(route.distance);
-          const durationMinutes = Math.max(1, Math.round(route.duration / 60));
-          return { distanceMeters, durationMinutes };
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    return null;
-  }
 }
 
 function typesMatch(types: string[] | undefined, target: string[]): boolean {
