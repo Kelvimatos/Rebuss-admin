@@ -72,10 +72,10 @@ export const authService = {
             ctx.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL("image/jpeg", 0.85));
           } else {
-            resolve(e.target?.result as string);
+            reject(new Error("Não foi possível preparar a imagem para salvar."));
           }
         };
-        img.onerror = () => resolve(e.target?.result as string);
+        img.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."));
         img.src = e.target?.result as string;
       };
       reader.onerror = reject;
@@ -90,30 +90,24 @@ export const authService = {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
+      res = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
         method: "POST",
         headers,
         body: JSON.stringify({ avatar: dataUri }),
         credentials: "include",
       });
-      const data = await res.json();
-      if (data.user) {
-        data.user.avatarUrl = data.user.avatarUrl || dataUri;
-        localStorage.setItem("rebuss_user", JSON.stringify(data.user));
-        return data.user;
-      }
     } catch {
-      // continua para fallback local garantido
+      throw new Error("Não foi possível conectar ao servidor para salvar a foto.");
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success || !data.user?.avatarUrl) {
+      throw new Error(data.message || "O servidor não confirmou o salvamento da foto.");
     }
 
-    const cachedUser = JSON.parse(localStorage.getItem("rebuss_user") || "{}");
-    const updatedUser: User = {
-      ...cachedUser,
-      avatarUrl: dataUri,
-    };
-    localStorage.setItem("rebuss_user", JSON.stringify(updatedUser));
-    return updatedUser;
+    localStorage.setItem("rebuss_user", JSON.stringify(data.user));
+    return data.user;
   },
 
   async removeAvatar(): Promise<User> {
@@ -123,23 +117,23 @@ export const authService = {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
+    let res: Response;
     try {
-      await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
+      res = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
         method: "DELETE",
         headers,
         credentials: "include",
       });
     } catch {
-      // fallback
+      throw new Error("Não foi possível conectar ao servidor para remover a foto.");
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success || !data.user) {
+      throw new Error(data.message || "O servidor não confirmou a remoção da foto.");
     }
 
-    const cachedUser = JSON.parse(localStorage.getItem("rebuss_user") || "{}");
-    const updatedUser: User = {
-      ...cachedUser,
-      avatarUrl: null,
-    };
-    localStorage.setItem("rebuss_user", JSON.stringify(updatedUser));
-    return updatedUser;
+    localStorage.setItem("rebuss_user", JSON.stringify(data.user));
+    return data.user;
   },
 
   async updatePassword(currentPassword: string, newPassword: string): Promise<void> {

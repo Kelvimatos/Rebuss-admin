@@ -109,8 +109,9 @@ function formatDateBr(dateStr: string): string {
 }
 
 function buildStationLineForMessage(station: TransitStationResult): string {
+  const icon = station.transportType === "TERMINAL_ONIBUS" ? "🚌" : station.transportType === "METRO" ? "🚇" : "🚆";
   const lineInfo = station.line ? ` (Linha ${station.line})` : "";
-  return `🚉 *Estação mais próxima:* ${station.name}${lineInfo}`;
+  return `${icon} *${station.transportLabel} de referência:* ${station.name}${lineInfo}`;
 }
 
 export const GeradorEscalasTool: React.FC = () => {

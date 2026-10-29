@@ -115,29 +115,50 @@ export class AuthController {
         return;
       }
 
-      if (!req.file) {
-        res.status(400).json({
-          success: false,
-          message: "Nenhuma imagem foi enviada.",
-        });
-        return;
+      let avatarUrl: string;
+      if (req.file) {
+        // Read initial bytes to check magic numbers
+        const buffer = fs.readFileSync(req.file.path);
+        if (!isValidImageBytes(buffer)) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch {}
+          res.status(400).json({
+            success: false,
+            message: "Formato de arquivo inválido. Apenas imagens JPEG, PNG e WebP reais são permitidas.",
+          });
+          return;
+        }
+        avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      } else {
+        // The client sends a resized data URI so the image can be stored durably in the database.
+        const dataUri = req.body?.avatar;
+        const match = typeof dataUri === "string"
+          ? /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUri)
+          : null;
+        if (!match) {
+          res.status(400).json({
+            success: false,
+            message: "Nenhuma imagem válida foi enviada.",
+          });
+          return;
+        }
+
+        const imageBuffer = Buffer.from(match[1], "base64");
+        if (
+          imageBuffer.length > 5 * 1024 * 1024 ||
+          imageBuffer.toString("base64") !== match[1] ||
+          !isValidImageBytes(imageBuffer)
+        ) {
+          res.status(400).json({
+            success: false,
+            message: "Imagem inválida ou maior que o limite de 5 MB.",
+          });
+          return;
+        }
+        avatarUrl = dataUri;
       }
 
-      // Read initial bytes to check magic numbers
-      const buffer = fs.readFileSync(req.file.path);
-      if (!isValidImageBytes(buffer)) {
-        // Delete rejected invalid file
-        try {
-          fs.unlinkSync(req.file.path);
-        } catch {}
-        res.status(400).json({
-          success: false,
-          message: "Formato de arquivo inválido. Apenas imagens JPEG, PNG e WebP reais são permitidas.",
-        });
-        return;
-      }
-
-      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
       const user = await authService.updateAvatar(req.user.id, avatarUrl);
 
       res.status(200).json({
