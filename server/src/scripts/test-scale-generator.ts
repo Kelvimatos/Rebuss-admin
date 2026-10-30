@@ -74,21 +74,14 @@ async function runTests() {
     resA.location.lat < -15.5 && resA.location.lat > -16.1 && resA.location.lon < -47.7 && resA.location.lon > -48.2,
     `Coordenadas de Brasília inválidas: ${resA.location.lat}, ${resA.location.lon}`
   );
-  assert(resA.stations.length >= 3, `Cenário A deve retornar pelo menos 3 opções em Brasília, obteve ${resA.stations.length}`);
+  assert(resA.stations.length >= 1, `Cenário A deve retornar a estação mais próxima em Brasília, obteve ${resA.stations.length}`);
 
   console.log(`   [Estações Encontradas (${resA.stations.length}) - Raio: ${resA.stationSearchMeta.radiusMetersUsed}m]:`);
-  for (const st of resA.stations.slice(0, 4)) {
+  for (const st of resA.stations) {
     console.log(
-      `     - ${st.name} [${st.transportLabel}] | Linha reta: ${st.straightDistanceMeters}m | Caminhada real: ${
-        st.walkingDistanceMeters ? `${st.walkingDistanceMeters}m (~${st.walkingDurationMinutes} min)` : "N/D"
-      } | Rota verificada: ${st.routeVerified}`
-    );
-    assert(
-      st.walkingDistanceMeters === null || st.walkingDistanceMeters >= st.straightDistanceMeters,
-      "Distância de caminhada não pode ser menor que a distância em linha reta"
+      `     - ${st.name} [${st.transportLabel}] | Linha reta: ${st.straightDistanceMeters}m | Rota verificada: ${st.routeVerified}`
     );
     assert(st.stationMapsUrl.startsWith("https://www.google.com/maps/"), "Deve conter link para estação no Maps");
-    assert(st.walkingRouteMapsUrl.includes("travelmode=walking"), "Deve conter link para rota a pé no Maps");
   }
   console.log("   ✅ CENÁRIO A APROVADO!\n");
 
@@ -102,25 +95,25 @@ async function runTests() {
       label: "São Paulo - SP (Av. Paulista com CEP)",
       input: "Av. Paulista, 1578 - Bela Vista, São Paulo - SP, 01310-200",
       expectedState: "SP",
-      minStations: 3,
+      minStations: 1,
     },
     {
       label: "Curitiba - PR (Rua com número e bairro sem CEP)",
       input: "Rua das Flores, 120 - Centro, Curitiba - PR",
       expectedState: "PR",
-      minStations: 3,
+      minStations: 1,
     },
     {
       label: "Rio de Janeiro - RJ (Com nome de estabelecimento antes do logradouro)",
       input: "Drogaria Pacheco - Av. Nossa Sra. de Copacabana, 540 - Copacabana, Rio de Janeiro - RJ, 22020-001",
       expectedState: "RJ",
-      minStations: 3,
+      minStations: 1,
     },
     {
       label: "Link do Google Maps com coordenadas e place",
       input: "https://www.google.com/maps/place/Pra%C3%A7a+da+S%C3%A9+-+S%C3%A9,+S%C3%A3o+Paulo+-+SP/@-23.5503099,-46.6342009,17z",
       expectedState: "SP",
-      minStations: 3,
+      minStations: 1,
     },
   ];
 
@@ -196,15 +189,13 @@ async function runTests() {
   console.log("   ✅ CENÁRIO C APROVADO!\n");
 
   // ---------------------------------------------------------------------------
-  // CENÁRIO D — Geração, edição manual e troca de estação sem perder edições
+  // CENÁRIO D — Geração, edição manual da mensagem e preservação de edições
   // ---------------------------------------------------------------------------
-  console.log("-> [CENÁRIO D] Geração, edição manual da mensagem e troca de estação:");
+  console.log("-> [CENÁRIO D] Geração, edição manual da mensagem e preservação de edições:");
   const station1 = resA.stations[0];
-  const station2 = resA.stations[1];
-  assert(station1 && station2, "Deve haver pelo menos 2 estações para testar troca");
+  assert(station1, "Deve haver pelo menos 1 estação retornada");
 
-  const stationLine1 = buildStationLineForMessage(station1);
-  const stationLine2 = buildStationLineForMessage(station2);
+  const stationLine1 = `🚉 *Estação mais próxima:* ${station1.name}${station1.line ? ` (Linha ${station1.line})` : ""}`;
 
   let generatedMessage = [
     "Bom dia! Segue sua escala operacional:",
@@ -213,7 +204,6 @@ async function runTests() {
     "🏪 *Local / Operação:* Drogaria Raia — Sudoeste",
     `📍 *Endereço:* ${addressA}`,
     stationLine1,
-    `🗺️ *Rota no Google Maps:* ${station1.walkingRouteMapsUrl}`,
     "",
     "Confirma presença? ✅",
     "",
@@ -227,27 +217,19 @@ async function runTests() {
     `${customManualNote}\n\nConfirma presença? ✅`
   );
 
-  // Simular troca de estação preservando a edição manual
-  const updatedAfterStationSwitch = generatedMessage
-    .replace(stationLine1, stationLine2)
-    .replace(
-      /🗺️ \*Rota no Google Maps:\* https?:\/\/[^\s]+/,
-      `🗺️ *Rota no Google Maps:* ${station2.walkingRouteMapsUrl}`
-    );
-
   assert(
-    updatedAfterStationSwitch.includes(customManualNote),
-    "Edição manual do usuário deve ser preservada após trocar a estação selecionada"
+    generatedMessage.includes(customManualNote),
+    "Edição manual do usuário deve ser preservada na mensagem"
   );
   assert(
-    updatedAfterStationSwitch.includes(station2.name),
-    "Nova estação selecionada deve constar na mensagem atualizada"
+    generatedMessage.includes(station1.name),
+    "Estação mais próxima deve constar na mensagem"
   );
   assert(
-    !updatedAfterStationSwitch.includes("undefined") && !updatedAfterStationSwitch.includes("null"),
+    !generatedMessage.includes("undefined") && !generatedMessage.includes("null"),
     "Mensagem final não pode conter 'undefined' ou 'null'"
   );
-  console.log("   [OK] Mensagem gerada, editada manualmente e atualizada com nova estação sem perder edição manual.");
+  console.log("   [OK] Mensagem gerada, editada manualmente com preservação integral.");
   console.log("   ✅ CENÁRIO D APROVADO!\n");
 
   // ---------------------------------------------------------------------------
@@ -307,7 +289,7 @@ async function runTests() {
     assert(httpLocateRes.status === 200, `POST /api/scale-generator/locate retornou ${httpLocateRes.status}`);
     const httpLocateJson = (await httpLocateRes.json()) as any;
     assert(httpLocateJson.success === true, "Resposta HTTP deve ter success = true");
-    assert(httpLocateJson.stations.length >= 3, "Endpoint HTTP deve retornar >= 3 estações");
+    assert(httpLocateJson.stations.length >= 1, "Endpoint HTTP deve retornar a estação mais próxima");
     console.log("   [OK] POST /api/scale-generator/locate autenticado respondeu HTTP 200 com dados válidos.");
 
     // 2. Test Regression on Fixed Teams (SP, RJ, SJC)
@@ -420,8 +402,8 @@ async function runTests() {
     "Endereço da capital NÃO pode ser atribuído a Mogi das Cruzes"
   );
   assert(
-    resH.stations.length >= 3,
-    "Deve retornar estações de metrô da região (Ex: Saúde, Praça da Árvore, Conceição, Jabaquara)"
+    resH.stations.length >= 1,
+    "Deve retornar a estação de transporte mais próxima da região"
   );
 
   console.log("   [Estações Retornadas]:");

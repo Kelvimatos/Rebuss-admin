@@ -543,7 +543,6 @@ export const GeradorEscalasTool: React.FC = () => {
             onClick={() => {
               setStoreName("");
               setMeetingPoint("");
-              setCustomMapsUrl("");
               setNotes("");
               setIsManuallyEdited(false);
               handleClearAddress();

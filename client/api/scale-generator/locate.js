@@ -385,7 +385,6 @@ export default async function handler(req, res) {
     });
 
     // Calcula estações próximas a partir da base oficial verificada
-    const originParam = encodeURIComponent(formattedAddress || `${lat},${lon}`);
     const searchRadii = [3500, 6000, 9500, 15000];
     let radiusUsed = searchRadii[0];
 
@@ -395,8 +394,6 @@ export default async function handler(req, res) {
       const stationParam = encodeURIComponent(stationFullName);
 
       const straightMeters = Math.round(dist);
-      const walkingMeters = Math.round(dist * 1.25);
-      const walkingMinutes = Math.max(1, Math.round(walkingMeters / 80));
 
       return {
         id: st.id,
@@ -411,11 +408,11 @@ export default async function handler(req, res) {
         lat: st.lat,
         lon: st.lon,
         straightDistanceMeters: straightMeters,
-        walkingDistanceMeters: walkingMeters,
-        walkingDurationMinutes: walkingMinutes,
-        routeVerified: true,
+        walkingDistanceMeters: null,
+        walkingDurationMinutes: null,
+        routeVerified: false,
         stationMapsUrl: `https://www.google.com/maps/search/?api=1&query=${stationParam}`,
-        walkingRouteMapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${stationParam}&travelmode=walking`,
+        walkingRouteMapsUrl: "",
       };
     });
 
@@ -434,7 +431,7 @@ export default async function handler(req, res) {
     }
 
     nearbyStations.sort((a, b) => a.straightDistanceMeters - b.straightDistanceMeters);
-    const finalStations = nearbyStations.slice(0, 10);
+    const finalStations = nearbyStations.slice(0, 1);
 
     return res.status(200).json({
       success: true,
@@ -463,7 +460,7 @@ export default async function handler(req, res) {
       stationSearchMeta: {
         radiusMetersUsed: radiusUsed,
         totalFound: finalStations.length,
-        walkingRoutesResolved: true,
+        walkingRoutesResolved: false,
         message: finalStations.length === 0 ? "Nenhuma estação cadastrada próxima encontrada." : null,
       },
     });
